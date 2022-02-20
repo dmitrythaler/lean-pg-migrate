@@ -1,0 +1,7 @@
+node_modules/
+sandbox/
+.env.local
+.env.*.local
+yarn-debug.log*
+yarn-error.log*
+.editorconfig

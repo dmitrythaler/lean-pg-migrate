@@ -27,13 +27,15 @@ program
 
 program.addHelpText('after', `
 Examples:
-  lpgm new create-some-table
-  lpgm new create-another-table
-  lpgm migrate 1
-  lpgm migrate
-  lpgm rollback all
-  lpgm rollback group
-  lpgm rollback 1
+  lpgm new create-some-table      # create new migration file
+  lpgm new create-another-table   # same
+  lpgm migrate 1                  # execute 1 migration
+  lpgm up 1                       # "up" command is an alias of "migrate"
+  lpgm migrate                    # execute all migration
+  lpgm rollback all               # rollback ALL migrations, dangerous - it turns the DB to it's "virgin" state
+  lpgm rollback group             # rollback last executed group of migrations
+  lpgm rollback 1                 # rollback 1 migration
+  lpgm down 1                     # "down" command is an alias of "rollback"
 `)
 
 const initMigration = async opts =>
@@ -55,8 +57,9 @@ program.command('migrate')
   .argument('[Num] | [all]', 'number of migrations to apply or "all"(default)')
   .action(async arg => {
     const opts = program.opts()
+    let migration
     try {
-      const migration = await initMigration(opts)
+      migration = await initMigration(opts)
       if (arg === 'all' || arg === undefined) {
         await migration.up()
       } else {
@@ -67,9 +70,10 @@ program.command('migrate')
           await migration.up(count)
         }
       }
-      await migration.end()
     } catch (e) {
       console.error(`Command failed: ${e.toString()}`)
+    } finally {
+      await migration.end()
     }
   })
 
@@ -79,8 +83,9 @@ program.command('rollback')
   .argument('[Num] | [all] | [group]', 'number of migrations to rollback, "all" or "group"(default)')
   .action(async arg => {
     const opts = program.opts()
+    let migration
     try {
-      const migration = await initMigration(opts)
+      migration = await initMigration(opts)
 
       if (arg === 'group' || arg === undefined) {
         await migration.rollbackGroup()
@@ -94,9 +99,10 @@ program.command('rollback')
           await migration.down(count)
         }
       }
-      await migration.end()
     } catch (e) {
       console.error(`Command failed: ${e.toString()}`)
+    } finally {
+      await migration.end()
     }
   })
 
@@ -111,17 +117,6 @@ program.command('new')
     if (fileName) {
       console.log(`Migration file "${fileName}" created.`)
     }
-  })
-
-// debug
-program.command('log')
-  .alias('test')
-  .description('just to test ...')
-  .argument('[Num] | <all>', 'number of migrations to apply or "all"(default)')
-  .action(arg => {
-    const opts = program.opts()
-    console.log(arg)
-    console.log(opts)
   })
 
 // ... and here we go ...

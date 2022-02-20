@@ -28,9 +28,10 @@ export declare type MigrationItself = {
 export declare class Migration {
     config: MigrationConfig;
     db: DB;
+    log: (...args: any[]) => void;
+    error: (...args: any[]) => void;
     private constructor();
     static initialize(cfg?: MigrationConfig): Promise<Migration>;
-    private log;
     /**
      * number of already applied migrations
      *

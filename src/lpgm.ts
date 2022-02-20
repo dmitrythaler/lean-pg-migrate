@@ -38,16 +38,27 @@ export type MigrationItself = {
   down?: (db: T.ITask<{}>) => Promise<void>
 } & Record<string, unknown>
 
+// export class MigrationError extends Error {
+//   migration: string
+//   constructor(message: string, migration: )
+
+// }
+
 
 //  ---------------------------------
 export class Migration {
 
   config: MigrationConfig
   db: DB
+  log: (...args: any[]) => void
+  error: (...args: any[]) => void
 
   private constructor(cfg: MigrationConfig, db: DB) {
     this.config = cfg
     this.db = db
+    const dummy = () => {}
+    this.log = cfg.silent ? dummy : console.log.bind(console)
+    this.error = cfg.silent ? dummy : console.error.bind(console)
   }
 
   static async initialize(cfg?: MigrationConfig): Promise<Migration> {
@@ -109,16 +120,12 @@ export class Migration {
         }
       })
     } catch (er) {
-      console.error('Migration init error:', er.toString())
+      if (!config.silent) {
+        console.error('Migration init error:', er.toString())
+      }
       throw er
     }
     return new Migration(config, db)
-  }
-
-  private log(...args: any[]): void {
-    if (!this.config.silent) {
-      console.log(...args)
-    }
   }
 
   /**
@@ -139,7 +146,8 @@ export class Migration {
     try {
       return await import(migPathFile)
     } catch (er) {
-      console.error(`Migration file "${migPathFile}" loading error:`, er)
+      this.error(`Migration file "${migPathFile}" loading error:`, er.toString)
+      er.migration = migFile
       throw er
     }
   }
@@ -164,7 +172,8 @@ export class Migration {
           ]
         )
       } catch (er) {
-        console.error(`Migration ${migFile} exec error:`, er)
+        this.error(`Migration ${migFile} exec error:`, er.toString())
+        er.migration = migFile
         throw er
       }
     })
@@ -185,12 +194,12 @@ export class Migration {
         .map(dr => dr.name)
         .sort()
     } catch (er) {
-      console.error(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`)
-      return 0
+      this.error(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`)
+      throw er
     }
 
     if (!files.length) {
-      console.warn(`No migrations found in "${path.resolve(this.config.migrationsDir)}" directory!`)
+      this.log(`No migrations found in "${path.resolve(this.config.migrationsDir)}" directory!`)
       return 0
     }
 
@@ -228,8 +237,8 @@ export class Migration {
 
       return files.length
     } catch (er) {
-      console.error('Migrations exec error:', er.toString())
-      return 0
+      this.error('Migrations exec error:', er.toString())
+      throw er
     }
   }
 
@@ -252,7 +261,8 @@ export class Migration {
         ]
         )
       } catch (er) {
-        console.error(`Migration "${migFile}" rollback error:`, er)
+        this.error(`Migration "${migFile}" rollback error:`, er.toString())
+        er.migration = migFile
         throw er
       }
     })
@@ -298,8 +308,8 @@ export class Migration {
 
       return await this.execDown(rows)
     } catch (er) {
-      console.error('Migrations rollback error:', er.toString())
-      return 0
+      this.error('Migrations rollback error:', er.toString())
+      throw er
     }
   }
 
@@ -320,8 +330,8 @@ export class Migration {
 
       return await this.execDown(rows)
     } catch (er) {
-      console.error('Migrations rollback error:', er.toString())
-      return 0
+      this.error('Migrations rollback error:', er.toString())
+      throw er
     }
   }
 
@@ -357,8 +367,8 @@ export class Migration {
 
       return await this.execDown(rows)
     } catch (er) {
-      console.error('Migrations rollback error:', er.toString())
-      return 0
+      this.error('Migrations rollback error:', er.toString())
+      throw er
     }
   }
 

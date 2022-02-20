@@ -8,7 +8,7 @@
   "types": "lpgm.d.ts",
   "repository": {
     "type": "git",
-    "url": "git://github.com/tmitrythaler/lean-pg-migrate.git"
+    "url": "git://github.com/dmitrythaler/lean-pg-migrate.git"
   },
   "scripts": {
     "build": "tsc",

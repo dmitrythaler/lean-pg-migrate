@@ -11,12 +11,12 @@ import pgPromise from 'pg-promise'
 // to stop and destroy
 // > docker stop tmp-pg
 
+const env = process.env
+
 const cfg: MigrationConfig = {
-  host: 'localhost',
-  port: 5432,
-  database: 'postgres',
-  user: 'postgres',
-  password: 'testerwashere',
+  database: env.PGDATABASE || 'postgres',
+  user: env.PGUSER || 'postgres',
+  password: env.PGPASSWORD || 'testerwashere',
   migrationsDir: 'test/migrations',
   migrationsTable: 'migrations4test',
   silent: true,

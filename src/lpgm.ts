@@ -38,13 +38,6 @@ export type MigrationItself = {
   down?: (db: T.ITask<{}>) => Promise<void>
 } & Record<string, unknown>
 
-// export class MigrationError extends Error {
-//   migration: string
-//   constructor(message: string, migration: )
-
-// }
-
-
 //  ---------------------------------
 export class Migration {
 

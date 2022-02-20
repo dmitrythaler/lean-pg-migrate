@@ -41,8 +41,8 @@ jobs:
       - name: Run tests
         run: yarn test
         env:
-          POSTGRES_DB: test
-          POSTGRES_HOST: localhost
-          POSTGRES_PORT: ${{ job.services.postgres.ports[5432] }}
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: testerwashere
+          PGDATABASE: postgres
+          PGHOST: localhost
+          PGPORT: ${{ job.services.postgres.ports[5432] }}
+          PGUSER: postgres
+          PGPASSWORD: testerwashere

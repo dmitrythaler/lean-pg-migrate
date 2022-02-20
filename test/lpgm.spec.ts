@@ -199,11 +199,10 @@ describe('Migration usage suite', () => {
     assert.strictEqual(desc.length, 0)
   })
 
-  it.only('should create migration file', () => {
+  it('should create migration file', () => {
     const fn = createMigrationFile('something to think about', cfg.migrationsDir)
     assert.ok(fn)
     assert.ok(fn.length)
-    console.log(fn)
     const file = fs.readFileSync(fn)
     assert.ok(file)
     assert.ok(file.length)

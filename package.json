@@ -13,7 +13,10 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test": "jest --forceExit --detectOpenHandles --runInBand --bail=1"
+    "test:pg:start": "docker run -p 5432:5432 --name lpgm-test-tmp --rm -e POSTGRES_PASSWORD=testerwashere -d postgres:latest",
+    "test:pg:stop": "docker stop lpgm-test-tmp",
+    "test": "jest --forceExit --detectOpenHandles --runInBand --bail=1",
+    "test:pg:exec": "yarn test:pg:start && yarn test; yarn test:pg:stop"
   },
   "bin": {
     "lpgm": "./index.js"

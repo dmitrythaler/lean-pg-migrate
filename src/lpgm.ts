@@ -34,8 +34,8 @@ export type MigrationRecord = {
 }
 
 export type MigrationItself = {
-  up?: (db: T.ITask<{}>) => Promise<void>
-  down?: (db: T.ITask<{}>) => Promise<void>
+  up?: (t: T.ITask<{}>) => Promise<void>
+  down?: (t: T.ITask<{}>) => Promise<void>
 } & Record<string, unknown>
 
 //  ---------------------------------
@@ -376,7 +376,8 @@ export class Migration {
 //  ----------------------------------------------------------------------------------------------//
 
 const fileContent = `
-// trx - pg-promise's transaction
+// trx - pg-promise's transaction/task (ITask<{}>)
+// please refer to https://vitaly-t.github.io/pg-promise/Task.html
 
 const up = async function(trx) {
   return await trx.none(

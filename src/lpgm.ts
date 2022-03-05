@@ -139,7 +139,7 @@ export class Migration {
     try {
       return await import(migPathFile)
     } catch (er) {
-      this.error(`Migration file "${migPathFile}" loading error:`, er.toString)
+      this.error(`Migration file "${migPathFile}" loading error:`, er.toString())
       er.migration = migFile
       throw er
     }

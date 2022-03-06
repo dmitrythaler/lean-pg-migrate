@@ -7,7 +7,7 @@ import type { MigrationConfig } from '../src/lpgm'
 import pgPromise from 'pg-promise'
 
 // to start PosgreSQL server inside docker container pls run
-// > docker run -p 5432:5432 --name tmp-pg --rm -e POSTGRES_PASSWORD=testerwashere -d postgres:latest
+// > docker run -p 45432:5432 --name tmp-pg --rm -e POSTGRES_PASSWORD=testerwashere -d postgres:latest
 // to stop and destroy
 // > docker stop tmp-pg
 
@@ -17,6 +17,7 @@ const cfg: MigrationConfig = {
   database: env.PGDATABASE || 'postgres',
   user: env.PGUSER || 'postgres',
   password: env.PGPASSWORD || 'testerwashere',
+  port: parseFloat(env.PGPORT || '45432'),
   migrationsDir: 'test/migrations',
   migrationsTable: 'migrations4test',
   silent: true,

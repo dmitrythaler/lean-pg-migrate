@@ -49,8 +49,7 @@ const initMigration = async opts =>
     migrationsDir: opts.dir,
     migrationsTable: opts.table,
     silent: opts.silent,
-    monitor: opts.monitor,
-    dry: opts.dry
+    monitor: opts.monitor
   })
 
 program.command('migrate')
@@ -63,13 +62,13 @@ program.command('migrate')
     try {
       migration = await initMigration(opts)
       if (arg === 'all' || arg === undefined) {
-        await migration.up()
+        await migration.up(0, opts.dry)
       } else {
         const count = parseFloat(arg)
         if (isNaN(count)) {
           console.log(`Invalid argument provided "${arg}"`)
         } else {
-          await migration.up(count)
+          await migration.up(count, opts.dry)
         }
       }
     } catch (e) {
@@ -90,15 +89,15 @@ program.command('rollback')
       migration = await initMigration(opts)
 
       if (arg === 'group' || arg === undefined) {
-        await migration.rollbackGroup()
+        await migration.rollbackGroup(opts.dry)
       } else if (arg === 'all') {
-        await migration.rollbackAll()
+        await migration.rollbackAll(opts.dry)
       } else {
         const count = parseFloat(arg)
         if (isNaN(count)) {
           console.log(`Invalid argument provided "${arg}"`)
         } else {
-          await migration.down(count)
+          await migration.down(count, opts.dry)
         }
       }
     } catch (e) {

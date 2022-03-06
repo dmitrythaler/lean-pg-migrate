@@ -24,7 +24,6 @@ export type MigrationConfig = DBConnection & {
   migrationsDir?: string
   monitor?: boolean
   silent?: boolean
-  dry?: boolean
 }
 
 export type MigrationRecord = {
@@ -79,7 +78,6 @@ export class Migration {
       migrationsDir: LPGM_DIR || './migrations',
       monitor: false,
       silent: false,
-      dry: false,
       ...cfg
     }
     const pgpOpts = { capSQL: true }
@@ -173,7 +171,7 @@ export class Migration {
    * @param {int} - optional number of migrations to apply, absent means all migrations
    * @returns {Promise<number>} - number of applied migrations
    */
-  async up(count?: number): Promise<number> {
+  async up(count?: number, dry = false): Promise<number> {
     let files: string[]
 
     try {
@@ -220,7 +218,7 @@ export class Migration {
       const groupId = Math.round(Math.random() * 2_000_000_000)
       // exec migrations one by one
       for (const f of files) {
-        if ( this.config.dry) {
+        if (dry) {
           this.log(`+ Migration "${f}" applied. (dry run)`)
         } else {
           await this.oneUp(f, groupId)
@@ -264,19 +262,18 @@ export class Migration {
    * @private
    * rollback provided list of migrations
    */
-  private async execDown(rows: MigrationRecord[]): Promise<number> {
+  private async execDown(rows: MigrationRecord[], dry: boolean): Promise<number> {
     if (!rows || !rows.length) {
       this.log(`No migrations left to rollback.`)
       return 0
     }
     // rollback them one by one
     for (const row of rows) {
-      if (this.config.dry) {
+      if (dry) {
         this.log(`- Migration "${row.name}" rolled back. (dry run)`)
       } else {
         await this.oneDown(row.name, row.id)
       }
-
     }
     return rows.length
   }
@@ -287,7 +284,7 @@ export class Migration {
    * @param {int} count - number of migrations to rollback, absence or less than 1 will throw
    * @returns {Promise<number>} - number of migrations rolled back
    */
-  async down(count: number): Promise<number> {
+  async down(count: number, dry = false): Promise<number> {
     if (!(count > 0)) {
       // count not provided or negative or zero
       throw new Error(`Wrong migration number provided: ${count}`)
@@ -303,7 +300,7 @@ export class Migration {
         ]
       )
 
-      return await this.execDown(rows)
+      return await this.execDown(rows, dry)
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
@@ -316,7 +313,7 @@ export class Migration {
    *
    * @returns {Promise<number>} - number of migrations rolled back
    */
-  async rollbackAll(): Promise<number> {
+  async rollbackAll(dry = false): Promise<number> {
     try {
       // get last applied migrations
       const rows = await this.db.any(
@@ -326,7 +323,7 @@ export class Migration {
         ]
       )
 
-      return await this.execDown(rows)
+      return await this.execDown(rows, dry)
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
@@ -339,7 +336,7 @@ export class Migration {
    *
    * @returns {Promise<number>} - number of migrations rolled back
    */
-  async rollbackGroup(): Promise<number> {
+  async rollbackGroup(dry = false): Promise<number> {
     try {
       const rows = await this.db.task(async t => {
         // get last applied migration
@@ -364,7 +361,7 @@ export class Migration {
         )
       })
 
-      return await this.execDown(rows)
+      return await this.execDown(rows, dry)
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations rollback error: ${migFile}${er.toString()}`)

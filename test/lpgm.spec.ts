@@ -20,7 +20,8 @@ const cfg: MigrationConfig = {
   migrationsDir: 'test/migrations',
   migrationsTable: 'migrations4test',
   silent: true,
-  monitor: false
+  monitor: false,
+  dry: false
 }
 
 describe('Migration usage suite', () => {

@@ -22,8 +22,8 @@ export declare type MigrationRecord = {
     group_id?: number;
 };
 export declare type MigrationItself = {
-    up?: (db: T.ITask<{}>) => Promise<void>;
-    down?: (db: T.ITask<{}>) => Promise<void>;
+    up?: (t: T.ITask<{}>) => Promise<void>;
+    down?: (t: T.ITask<{}>) => Promise<void>;
 } & Record<string, unknown>;
 export declare class Migration {
     config: MigrationConfig;

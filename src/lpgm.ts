@@ -136,13 +136,7 @@ export class Migration {
 
   private async loadMigration(migFile: string): Promise<MigrationItself> {
     const migPathFile = path.resolve(path.join(this.config.migrationsDir, migFile))
-    try {
-      return await import(migPathFile)
-    } catch (er) {
-      this.error(`Migration file "${migPathFile}" loading error:`, er.toString())
-      er.migration = migFile
-      throw er
-    }
+    return await import(migPathFile)
   }
 
   /**
@@ -165,7 +159,6 @@ export class Migration {
           ]
         )
       } catch (er) {
-        this.error(`Migration ${migFile} exec error:`, er.toString())
         er.migration = migFile
         throw er
       }
@@ -230,7 +223,8 @@ export class Migration {
 
       return files.length
     } catch (er) {
-      this.error('Migrations exec error:', er.toString())
+      const migFile = er.migration ? `(file: ${er.migration}) ` : ''
+      this.error(`Migrations exec error: ${migFile}${er.toString()}`)
       throw er
     }
   }
@@ -254,7 +248,6 @@ export class Migration {
         ]
         )
       } catch (er) {
-        this.error(`Migration "${migFile}" rollback error:`, er.toString())
         er.migration = migFile
         throw er
       }
@@ -301,7 +294,8 @@ export class Migration {
 
       return await this.execDown(rows)
     } catch (er) {
-      this.error('Migrations rollback error:', er.toString())
+      const migFile = er.migration ? `(file: ${er.migration}) ` : ''
+      this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
     }
   }
@@ -323,7 +317,8 @@ export class Migration {
 
       return await this.execDown(rows)
     } catch (er) {
-      this.error('Migrations rollback error:', er.toString())
+      const migFile = er.migration ? `(file: ${er.migration}) ` : ''
+      this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
     }
   }
@@ -360,7 +355,8 @@ export class Migration {
 
       return await this.execDown(rows)
     } catch (er) {
-      this.error('Migrations rollback error:', er.toString())
+      const migFile = er.migration ? `(file: ${er.migration}) ` : ''
+      this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
     }
   }
@@ -379,19 +375,17 @@ const fileContent = `
 // trx - pg-promise's transaction/task (ITask<{}>)
 // please refer to https://vitaly-t.github.io/pg-promise/Task.html
 
-const up = async function(trx) {
+export const up = async function(trx) {
   return await trx.none(
     'CREATE TABLE one (id SERIAL PRIMARY KEY, name TEXT, creted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())'
   )
 }
 
-const down = async function(trx) {
+export const down = async function(trx) {
   return await trx.none(
     'DROP TABLE one'
   )
 }
-
-module.exports = { up, down }
 `
 
 /**

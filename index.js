@@ -1,8 +1,8 @@
-#!/usr/bin/env node
-const dotenv = require('dotenv')
-const { Command, Option } = require('commander')
-const { Migration, createMigrationFile } = require('./lpgm.js')
-const { version } = require('./package.json')
+#!/usr/bin/env -S node --no-warnings
+import dotenv from 'dotenv'
+import { Command, Option } from 'commander'
+import { Migration, createMigrationFile } from './lpgm.js'
+import pkg from './package.json' assert {type: "json"}
 
 dotenv.config()
 const program = new Command()
@@ -12,7 +12,7 @@ program
   .description('Lean PostgreSQL Migrations')
   .option('--silent', 'Show only errors/warnings')
   .option('--monitor', 'Attach pg-monitor and log actual SQL commands in console')
-  .version(version)
+  .version(pkg.version)
 
 program
   .addOption(new Option('-d, --dir <directory>', 'The directory containing your migration files').default('./migrations').env('LPGM_DIR'))

@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "commonjs",
+    "module": "ES2020",
     "declaration": true,
     "allowJs": true,
     "checkJs": false,
@@ -13,6 +13,7 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
+    "moduleResolution": "Node"
   },
   "include": [
     "src/**/*"

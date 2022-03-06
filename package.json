@@ -4,6 +4,7 @@
   "description": "PostgreSQL simple migration tool",
   "author": "Dmitry Thaler <dmitry@thaler.dev>",
   "license": "MIT",
+  "type": "module",
   "main": "lpgm.js",
   "types": "lpgm.d.ts",
   "repository": {
@@ -13,7 +14,8 @@
   "scripts": {
     "build": "tsc",
     "typecheck": "tsc --noEmit",
-    "test:pg:start": "docker run -p 5432:5432 --name lpgm-test-tmp --rm -e POSTGRES_PASSWORD=testerwashere -d postgres:latest",
+    "test:pg:start": "docker run -p 5432:5432 --name lpgm-test-tmp --rm -e POSTGRES_PASSWORD=testerwashere -d postgres:latest && yarn test:pg:status",
+    "test:pg:status": "docker ps -af name=\"lpgm*\" --format \"{{.ID}} {{.Names}}, {{.Status}}, {{.Ports}}\"",
     "test:pg:stop": "docker stop lpgm-test-tmp",
     "test": "jest --forceExit --detectOpenHandles --runInBand --bail=1",
     "test:pg:exec": "yarn test:pg:start && yarn test; yarn test:pg:stop"
@@ -49,7 +51,8 @@
   "jest": {
     "globals": {
       "ts-jest": {
-        "tsconfig": "tsconfig.json"
+        "tsconfig": "tsconfig.json",
+        "useESM": true
       }
     },
     "verbose": true,

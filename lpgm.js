@@ -1,38 +1,9 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createMigrationFile = exports.Migration = void 0;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const pg_promise_1 = __importDefault(require("pg-promise"));
-const pg_monitor_1 = __importDefault(require("pg-monitor"));
-// export class MigrationError extends Error {
-//   migration: string
-//   constructor(message: string, migration: )
-// }
+import fs from 'fs';
+import path from 'path';
+import pgPromise from 'pg-promise';
+import monitor from 'pg-monitor';
 //  ---------------------------------
-class Migration {
+export class Migration {
     constructor(cfg, db) {
         this.config = cfg;
         this.db = db;
@@ -56,10 +27,10 @@ class Migration {
             ...cfg
         };
         const pgpOpts = { capSQL: true };
-        const pgp = (0, pg_promise_1.default)(pgpOpts);
+        const pgp = pgPromise(pgpOpts);
         if (config.monitor) {
-            pg_monitor_1.default.attach(pgpOpts);
-            pg_monitor_1.default.setTheme('matrix');
+            monitor.attach(pgpOpts);
+            monitor.setTheme('matrix');
         }
         const db = pgp({
             user: config.user,
@@ -98,15 +69,8 @@ class Migration {
         return parseFloat(count);
     }
     async loadMigration(migFile) {
-        const migPathFile = path_1.default.resolve(path_1.default.join(this.config.migrationsDir, migFile));
-        try {
-            return await Promise.resolve().then(() => __importStar(require(migPathFile)));
-        }
-        catch (er) {
-            this.error(`Migration file "${migPathFile}" loading error:`, er.toString);
-            er.migration = migFile;
-            throw er;
-        }
+        const migPathFile = path.resolve(path.join(this.config.migrationsDir, migFile));
+        return await import(migPathFile);
     }
     /**
      * @private
@@ -126,7 +90,6 @@ class Migration {
                 ]);
             }
             catch (er) {
-                this.error(`Migration ${migFile} exec error:`, er.toString());
                 er.migration = migFile;
                 throw er;
             }
@@ -141,17 +104,17 @@ class Migration {
     async up(count) {
         let files;
         try {
-            files = fs_1.default.readdirSync(this.config.migrationsDir, { withFileTypes: true })
+            files = fs.readdirSync(this.config.migrationsDir, { withFileTypes: true })
                 .filter(dr => dr.isFile() && dr.name.slice(-3) === '.js')
                 .map(dr => dr.name)
                 .sort();
         }
         catch (er) {
-            this.error(`Error reading "${path_1.default.resolve(this.config.migrationsDir)}" directory!`);
+            this.error(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`);
             throw er;
         }
         if (!files.length) {
-            this.log(`No migrations found in "${path_1.default.resolve(this.config.migrationsDir)}" directory!`);
+            this.log(`No migrations found in "${path.resolve(this.config.migrationsDir)}" directory!`);
             return 0;
         }
         try {
@@ -184,7 +147,8 @@ class Migration {
             return files.length;
         }
         catch (er) {
-            this.error('Migrations exec error:', er.toString());
+            const migFile = er.migration ? `(file: ${er.migration}) ` : '';
+            this.error(`Migrations exec error: ${migFile}${er.toString()}`);
             throw er;
         }
     }
@@ -205,7 +169,6 @@ class Migration {
                 ]);
             }
             catch (er) {
-                this.error(`Migration "${migFile}" rollback error:`, er.toString());
                 er.migration = migFile;
                 throw er;
             }
@@ -247,7 +210,8 @@ class Migration {
             return await this.execDown(rows);
         }
         catch (er) {
-            this.error('Migrations rollback error:', er.toString());
+            const migFile = er.migration ? `(file: ${er.migration}) ` : '';
+            this.error(`Migrations rollback error: ${migFile}${er.toString()}`);
             throw er;
         }
     }
@@ -266,7 +230,8 @@ class Migration {
             return await this.execDown(rows);
         }
         catch (er) {
-            this.error('Migrations rollback error:', er.toString());
+            const migFile = er.migration ? `(file: ${er.migration}) ` : '';
+            this.error(`Migrations rollback error: ${migFile}${er.toString()}`);
             throw er;
         }
     }
@@ -296,7 +261,8 @@ class Migration {
             return await this.execDown(rows);
         }
         catch (er) {
-            this.error('Migrations rollback error:', er.toString());
+            const migFile = er.migration ? `(file: ${er.migration}) ` : '';
+            this.error(`Migrations rollback error: ${migFile}${er.toString()}`);
             throw er;
         }
     }
@@ -307,24 +273,22 @@ class Migration {
         await this.db.$pool.end();
     }
 }
-exports.Migration = Migration;
 //  ----------------------------------------------------------------------------------------------//
 const fileContent = `
-// trx - pg-promise's transaction
+// trx - pg-promise's transaction/task (ITask<{}>)
+// please refer to https://vitaly-t.github.io/pg-promise/Task.html
 
-const up = async function(trx) {
+export const up = async function(trx) {
   return await trx.none(
     'CREATE TABLE one (id SERIAL PRIMARY KEY, name TEXT, creted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())'
   )
 }
 
-const down = async function(trx) {
+export const down = async function(trx) {
   return await trx.none(
     'DROP TABLE one'
   )
 }
-
-module.exports = { up, down }
 `;
 /**
  * create migration file in format YYYYMMDD-HHMMSS-provided-file-name.js
@@ -333,14 +297,14 @@ module.exports = { up, down }
  * @param {string} - directory name
  * @returns {Promise<string>} - name of the new file
  */
-const createMigrationFile = (name, dir = './migrations') => {
+export const createMigrationFile = (name, dir = './migrations') => {
     // 2022-02-15T21:48:36.672Z to 20220215-214836
     const prefix = (new Date()).toISOString().split('.')[0].replace(/\-/g, '').replace(/\:/g, '').replace(/T/g, '-');
     // 20220215-214836-name-lowercased-and-spaces-replaced-with-dashes
     const fileName = `${prefix}-${name.toLowerCase().replace(/\s/g, '-')}.js`;
     try {
-        const pathFile = path_1.default.join(dir, fileName);
-        fs_1.default.writeFileSync(pathFile, fileContent);
+        const pathFile = path.join(dir, fileName);
+        fs.writeFileSync(pathFile, fileContent);
         return pathFile;
     }
     catch (error) {
@@ -348,4 +312,3 @@ const createMigrationFile = (name, dir = './migrations') => {
         return '';
     }
 };
-exports.createMigrationFile = createMigrationFile;

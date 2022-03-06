@@ -71,7 +71,7 @@ program.command('migrate')
         }
       }
     } catch (e) {
-      console.error(`Command failed: ${e.toString()}`)
+      console.error('Command failed.')
     } finally {
       await migration.end()
     }
@@ -100,7 +100,7 @@ program.command('rollback')
         }
       }
     } catch (e) {
-      console.error(`Command failed: ${e.toString()}`)
+      console.error('Command failed.')
     } finally {
       await migration.end()
     }

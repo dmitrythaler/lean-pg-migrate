@@ -13,7 +13,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "moduleResolution": "Node"
+    "moduleResolution": "Node",
+    "types": [
+      "node",
+      "jest"
+    ]
   },
   "include": [
     "src/**/*"

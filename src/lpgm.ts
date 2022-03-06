@@ -168,7 +168,8 @@ export class Migration {
   /**
    * apply provided number of migrations
    *
-   * @param {int} - optional number of migrations to apply, absent means all migrations
+   * @param {number} count - optional number of migrations to apply, absent or 0 means all migrations
+   * @param {boolean} dry - dry run mode, optional, false by default
    * @returns {Promise<number>} - number of applied migrations
    */
   async up(count?: number, dry = false): Promise<number> {
@@ -225,7 +226,7 @@ export class Migration {
         }
       }
 
-      return files.length
+      return dry ? 0 : files.length
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations exec error: ${migFile}${er.toString()}`)
@@ -275,13 +276,14 @@ export class Migration {
         await this.oneDown(row.name, row.id)
       }
     }
-    return rows.length
+    return dry ? 0 : rows.length
   }
 
   /**
    * rollbacks given number of migrations
    *
-   * @param {int} count - number of migrations to rollback, absence or less than 1 will throw
+   * @param {number} count - number of migrations to rollback, absence or less than 1 will throw
+   * @param {boolean} dry - dry run mode, optional, false by default
    * @returns {Promise<number>} - number of migrations rolled back
    */
   async down(count: number, dry = false): Promise<number> {
@@ -311,6 +313,7 @@ export class Migration {
   /**
    * rollbacks all migrations
    *
+   * @param {boolean} dry - dry run mode, optional, false by default
    * @returns {Promise<number>} - number of migrations rolled back
    */
   async rollbackAll(dry = false): Promise<number> {
@@ -334,6 +337,7 @@ export class Migration {
   /**
    * rollbacks last group of migrations
    *
+   * @param {boolean} dry - dry run mode, optional, false by default
    * @returns {Promise<number>} - number of migrations rolled back
    */
   async rollbackGroup(dry = false): Promise<number> {

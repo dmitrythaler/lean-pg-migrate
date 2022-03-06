@@ -24,7 +24,6 @@ export class Migration {
             migrationsDir: LPGM_DIR || './migrations',
             monitor: false,
             silent: false,
-            dry: false,
             ...cfg
         };
         const pgpOpts = { capSQL: true };
@@ -82,7 +81,7 @@ export class Migration {
             try {
                 const { up } = await this.loadMigration(migFile);
                 up && await up(t);
-                this.log(`+ Migration "${migFile}" applied.`);
+                this.log(`+ Migration "${migFile}" applied...`);
                 await t.none(`INSERT INTO $1~.$2~ (name, group_id) VALUES ($3, $4)`, [
                     this.config.migrationsSchema,
                     this.config.migrationsTable,
@@ -99,11 +98,13 @@ export class Migration {
     /**
      * apply provided number of migrations
      *
-     * @param {int} - optional number of migrations to apply, absent means all migrations
+     * @param {number} count optional number of migrations to apply, absent or 0 means all migrations
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of applied migrations
      */
-    async up(count) {
+    async up(count, dry = false) {
         let files;
+        this.log('+++ dry:', dry);
         try {
             files = fs.readdirSync(this.config.migrationsDir, { withFileTypes: true })
                 .filter(dr => dr.isFile() && dr.name.slice(-3) === '.js')
@@ -143,14 +144,14 @@ export class Migration {
             const groupId = Math.round(Math.random() * 2000000000);
             // exec migrations one by one
             for (const f of files) {
-                if (this.config.dry) {
+                if (dry) {
                     this.log(`+ Migration "${f}" applied. (dry run)`);
                 }
                 else {
                     await this.oneUp(f, groupId);
                 }
             }
-            return files.length;
+            return dry ? 0 : files.length;
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';
@@ -184,29 +185,30 @@ export class Migration {
      * @private
      * rollback provided list of migrations
      */
-    async execDown(rows) {
+    async execDown(rows, dry) {
         if (!rows || !rows.length) {
             this.log(`No migrations left to rollback.`);
             return 0;
         }
         // rollback them one by one
         for (const row of rows) {
-            if (this.config.dry) {
+            if (dry) {
                 this.log(`- Migration "${row.name}" rolled back. (dry run)`);
             }
             else {
                 await this.oneDown(row.name, row.id);
             }
         }
-        return rows.length;
+        return dry ? 0 : rows.length;
     }
     /**
      * rollbacks given number of migrations
      *
-     * @param {int} count - number of migrations to rollback, absence or less than 1 will throw
+     * @param {number} count - number of migrations to rollback, absence or less than 1 will throw
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of migrations rolled back
      */
-    async down(count) {
+    async down(count, dry = false) {
         if (!(count > 0)) {
             // count not provided or negative or zero
             throw new Error(`Wrong migration number provided: ${count}`);
@@ -218,7 +220,7 @@ export class Migration {
                 this.config.migrationsTable,
                 count
             ]);
-            return await this.execDown(rows);
+            return await this.execDown(rows, dry);
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';
@@ -229,16 +231,17 @@ export class Migration {
     /**
      * rollbacks all migrations
      *
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of migrations rolled back
      */
-    async rollbackAll() {
+    async rollbackAll(dry = false) {
         try {
             // get last applied migrations
             const rows = await this.db.any('SELECT id, name FROM $1~.$2~ ORDER BY id DESC', [
                 this.config.migrationsSchema,
                 this.config.migrationsTable
             ]);
-            return await this.execDown(rows);
+            return await this.execDown(rows, dry);
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';
@@ -249,9 +252,10 @@ export class Migration {
     /**
      * rollbacks last group of migrations
      *
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of migrations rolled back
      */
-    async rollbackGroup() {
+    async rollbackGroup(dry = false) {
         try {
             const rows = await this.db.task(async (t) => {
                 // get last applied migration
@@ -269,7 +273,7 @@ export class Migration {
                     row.group_id
                 ]);
             });
-            return await this.execDown(rows);
+            return await this.execDown(rows, dry);
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';

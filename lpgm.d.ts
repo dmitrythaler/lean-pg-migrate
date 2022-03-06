@@ -14,7 +14,6 @@ export declare type MigrationConfig = DBConnection & {
     migrationsDir?: string;
     monitor?: boolean;
     silent?: boolean;
-    dry?: boolean;
 };
 export declare type MigrationRecord = {
     id?: number;
@@ -48,10 +47,11 @@ export declare class Migration {
     /**
      * apply provided number of migrations
      *
-     * @param {int} - optional number of migrations to apply, absent means all migrations
+     * @param {number} count optional number of migrations to apply, absent or 0 means all migrations
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of applied migrations
      */
-    up(count?: number): Promise<number>;
+    up(count?: number, dry?: boolean): Promise<number>;
     /**
      * @private
      * rollback 1 migrations
@@ -65,22 +65,25 @@ export declare class Migration {
     /**
      * rollbacks given number of migrations
      *
-     * @param {int} count - number of migrations to rollback, absence or less than 1 will throw
+     * @param {number} count - number of migrations to rollback, absence or less than 1 will throw
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of migrations rolled back
      */
-    down(count: number): Promise<number>;
+    down(count: number, dry?: boolean): Promise<number>;
     /**
      * rollbacks all migrations
      *
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of migrations rolled back
      */
-    rollbackAll(): Promise<number>;
+    rollbackAll(dry?: boolean): Promise<number>;
     /**
      * rollbacks last group of migrations
      *
+     * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of migrations rolled back
      */
-    rollbackGroup(): Promise<number>;
+    rollbackGroup(dry?: boolean): Promise<number>;
     /**
      * close DB connection and release pool
      */

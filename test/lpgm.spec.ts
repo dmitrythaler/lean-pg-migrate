@@ -20,15 +20,14 @@ const cfg: MigrationConfig = {
   migrationsDir: 'test/migrations',
   migrationsTable: 'migrations4test',
   silent: true,
-  monitor: false,
-  dry: false
+  monitor: false
 }
 
 describe('Migration usage suite', () => {
 
   let migration: Migration
 
-  const describe = async () => {
+  const _describe = async () => {
     return await migration.db.any(
       `SELECT column_name as col, data_type as type FROM information_schema.columns WHERE table_name = '${cfg.migrationsTable}_1'`
     )
@@ -66,7 +65,7 @@ describe('Migration usage suite', () => {
     assert.strictEqual(res, 4)
     res = await migration.appliedMigrationsNum()
     assert.strictEqual(res, 4)
-    // const desc = await describe()
+    // const desc = await _describe()
     // console.log('table: ', desc)
   })
 
@@ -148,10 +147,37 @@ describe('Migration usage suite', () => {
     assert.strictEqual(res, 0)
   })
 
+  it('should do nothing in dry-run mode', async () => {
+    let res = await migration.up(2)
+    assert.strictEqual(res, 2)
+    res = await migration.appliedMigrationsNum()
+    assert.strictEqual(res, 2)
+
+    res = await migration.up(2, true/*dry*/)
+    assert.strictEqual(res, 0)
+    res = await migration.up(0, true/*dry*/)
+    assert.strictEqual(res, 0)
+    res = await migration.appliedMigrationsNum()
+    assert.strictEqual(res, 2)
+
+    res = await migration.rollbackGroup(true/*dry*/)
+    assert.strictEqual(res, 0)
+    res = await migration.rollbackAll(true/*dry*/)
+    assert.strictEqual(res, 0)
+    res = await migration.down(2, true/*dry*/)
+    assert.strictEqual(res, 0)
+    res = await migration.appliedMigrationsNum()
+    assert.strictEqual(res, 2)
+
+    await migration.rollbackAll()
+    res = await migration.appliedMigrationsNum()
+    assert.strictEqual(res, 0)
+  })
+
   it('should correctly exec up migrations', async () => {
     let res = await migration.up(1)
     assert.strictEqual(res, 1)
-    let desc = await describe()
+    let desc = await _describe()
     assert.strictEqual(desc.length, 2)
     assert.strictEqual(desc[0].col, 'id')
     assert.strictEqual(desc[1].col, 'name')
@@ -160,14 +186,14 @@ describe('Migration usage suite', () => {
 
     res = await migration.up(1)
     assert.strictEqual(res, 1)
-    desc = await describe()
+    desc = await _describe()
     assert.strictEqual(desc.length, 3)
     assert.strictEqual(desc[1].col, 'dummy')
     assert.strictEqual(desc[1].type, 'integer')
 
     res = await migration.up(1)
     assert.strictEqual(res, 1)
-    desc = await describe()
+    desc = await _describe()
     assert.strictEqual(desc.length, 4)
     assert.strictEqual(desc[3].col, 'pen_name')
     assert.strictEqual(desc[3].type, 'text')
@@ -176,7 +202,7 @@ describe('Migration usage suite', () => {
   it('should correctly exec down migrations', async () => {
     let res = await migration.down(1)
     assert.strictEqual(res, 1)
-    let desc = await describe()
+    let desc = await _describe()
     assert.strictEqual(desc.length, 3)
     assert.strictEqual(desc[0].col, 'id')
     assert.strictEqual(desc[1].col, 'dummy')
@@ -187,7 +213,7 @@ describe('Migration usage suite', () => {
 
     res = await migration.down(1)
     assert.strictEqual(res, 1)
-    desc = await describe()
+    desc = await _describe()
     assert.strictEqual(desc.length, 2)
     assert.strictEqual(desc[0].col, 'id')
     assert.strictEqual(desc[1].col, 'name')
@@ -196,7 +222,7 @@ describe('Migration usage suite', () => {
 
     res = await migration.down(1)
     assert.strictEqual(res, 1)
-    desc = await describe()
+    desc = await _describe()
     assert.strictEqual(desc.length, 0)
   })
 

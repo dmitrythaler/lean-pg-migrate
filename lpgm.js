@@ -81,7 +81,7 @@ export class Migration {
             try {
                 const { up } = await this.loadMigration(migFile);
                 up && await up(t);
-                this.log(`+ Migration "${migFile}" applied...`);
+                this.log(`+ Migration "${migFile}" applied.`);
                 await t.none(`INSERT INTO $1~.$2~ (name, group_id) VALUES ($3, $4)`, [
                     this.config.migrationsSchema,
                     this.config.migrationsTable,
@@ -98,13 +98,12 @@ export class Migration {
     /**
      * apply provided number of migrations
      *
-     * @param {number} count optional number of migrations to apply, absent or 0 means all migrations
+     * @param {number} count - optional number of migrations to apply, absent or 0 means all migrations
      * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of applied migrations
      */
     async up(count, dry = false) {
         let files;
-        this.log('+++ dry:', dry);
         try {
             files = fs.readdirSync(this.config.migrationsDir, { withFileTypes: true })
                 .filter(dr => dr.isFile() && dr.name.slice(-3) === '.js')

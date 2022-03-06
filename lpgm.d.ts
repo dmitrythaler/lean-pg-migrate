@@ -47,7 +47,7 @@ export declare class Migration {
     /**
      * apply provided number of migrations
      *
-     * @param {number} count optional number of migrations to apply, absent or 0 means all migrations
+     * @param {number} count - optional number of migrations to apply, absent or 0 means all migrations
      * @param {boolean} dry - dry run mode, optional, false by default
      * @returns {Promise<number>} - number of applied migrations
      */

@@ -22,9 +22,9 @@ program
   .addOption(new Option('-U, --user <user>', 'DB user').default('postgres').env('PGUSER'))
   .addOption(new Option('-W, --password <pswd>', 'DB password').default('postgres').env('PGPASSWORD'))
   .addOption(new Option('-D, --db <dbname>', 'DB name').default('postgres').env('PGDATABASE'))
-  .addOption(new Option('--silent', 'Show only errors/warnings'))
-  .addOption(new Option('--monitor', 'Attach pg-monitor and log actual SQL commands in console'))
-  .addOption(new Option('--dry', 'Dry run'))
+  .addOption(new Option('    --silent', 'No output'))
+  .addOption(new Option('    --monitor', 'Attach pg-monitor and log actual SQL commands in console'))
+  .addOption(new Option('    --dry', 'Dry run'))
 
 program.addHelpText('after', `
 Examples:

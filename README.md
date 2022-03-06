@@ -14,8 +14,6 @@ Usage: lpgm [options] [command]
 Lean PostgreSQL Migrations
 
 Options:
-  --silent                               Show only errors/warnings
-  --monitor                              Attach pg-monitor and log actual SQL commands in console
   -V, --version                          output the version number
   -d, --dir <directory>                  The directory containing your migration files (default: "./migrations", env: LPGM_DIR)
   -t, --table <dbtable>                  The name of the migrations table (default: "migrations", env: LPGM_TABLE)
@@ -26,6 +24,9 @@ Options:
   -U, --user <user>                      DB user (default: "postgres", env: PGUSER)
   -W, --password <pswd>                  DB password (default: "postgres", env: PGPASSWORD)
   -D, --db <dbname>                      DB name (default: "postgres", env: PGDATABASE)
+      --silent                           No output
+      --monitor                          Attach pg-monitor and log actual SQL commands in console
+      --dry                              Dry run
   -h, --help                             display help for command
 
 Commands:

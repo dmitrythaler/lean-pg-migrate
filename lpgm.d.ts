@@ -14,6 +14,7 @@ export declare type MigrationConfig = DBConnection & {
     migrationsDir?: string;
     monitor?: boolean;
     silent?: boolean;
+    dry?: boolean;
 };
 export declare type MigrationRecord = {
     id?: number;

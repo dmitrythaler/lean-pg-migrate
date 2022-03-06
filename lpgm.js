@@ -23,7 +23,8 @@ export class Migration {
             migrationsTable: LPGM_TABLE || 'migrations',
             migrationsDir: LPGM_DIR || './migrations',
             monitor: false,
-            silent: true,
+            silent: false,
+            dry: false,
             ...cfg
         };
         const pgpOpts = { capSQL: true };
@@ -142,7 +143,12 @@ export class Migration {
             const groupId = Math.round(Math.random() * 2000000000);
             // exec migrations one by one
             for (const f of files) {
-                await this.oneUp(f, groupId);
+                if (this.config.dry) {
+                    this.log(`+ Migration "${f}" applied. (dry run)`);
+                }
+                else {
+                    await this.oneUp(f, groupId);
+                }
             }
             return files.length;
         }
@@ -185,7 +191,12 @@ export class Migration {
         }
         // rollback them one by one
         for (const row of rows) {
-            await this.oneDown(row.name, row.id);
+            if (this.config.dry) {
+                this.log(`- Migration "${row.name}" rolled back. (dry run)`);
+            }
+            else {
+                await this.oneDown(row.name, row.id);
+            }
         }
         return rows.length;
     }

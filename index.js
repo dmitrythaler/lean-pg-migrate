@@ -10,8 +10,6 @@ const program = new Command()
 program
   .name('lpgm')
   .description('Lean PostgreSQL Migrations')
-  .option('--silent', 'Show only errors/warnings')
-  .option('--monitor', 'Attach pg-monitor and log actual SQL commands in console')
   .version(pkg.version)
 
 program
@@ -24,6 +22,9 @@ program
   .addOption(new Option('-U, --user <user>', 'DB user').default('postgres').env('PGUSER'))
   .addOption(new Option('-W, --password <pswd>', 'DB password').default('postgres').env('PGPASSWORD'))
   .addOption(new Option('-D, --db <dbname>', 'DB name').default('postgres').env('PGDATABASE'))
+  .addOption(new Option('--silent', 'Show only errors/warnings'))
+  .addOption(new Option('--monitor', 'Attach pg-monitor and log actual SQL commands in console'))
+  .addOption(new Option('--dry', 'Dry run'))
 
 program.addHelpText('after', `
 Examples:
@@ -32,7 +33,7 @@ Examples:
   lpgm migrate 1                  # execute 1 migration
   lpgm up 1                       # "up" command is an alias of "migrate"
   lpgm migrate                    # execute all migration
-  lpgm rollback all               # rollback ALL migrations, dangerous - it turns the DB to it's "virgin" state
+  lpgm rollback all               # rollback ALL migrations, dangerous - it turns the DB to it's initial state
   lpgm rollback group             # rollback last executed group of migrations
   lpgm rollback 1                 # rollback 1 migration
   lpgm down 1                     # "down" command is an alias of "rollback"
@@ -48,7 +49,8 @@ const initMigration = async opts =>
     migrationsDir: opts.dir,
     migrationsTable: opts.table,
     silent: opts.silent,
-    monitor: opts.monitor
+    monitor: opts.monitor,
+    dry: opts.dry
   })
 
 program.command('migrate')

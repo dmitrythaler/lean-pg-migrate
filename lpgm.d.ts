@@ -26,12 +26,30 @@ export declare type MigrationItself = {
     down?: (t: T.ITask<{}>) => Promise<void>;
 } & Record<string, unknown>;
 export declare class Migration {
-    config: MigrationConfig;
-    db: DB;
-    log: (...args: any[]) => void;
-    error: (...args: any[]) => void;
+    private lockId;
+    private config;
+    private db;
+    private log;
+    private error;
     private constructor();
     static initialize(cfg?: MigrationConfig): Promise<Migration>;
+    /**
+     * config getter
+     * @returns {MigrationConfig}
+     */
+    getConfig(): MigrationConfig;
+    /**
+     * db getter
+     * @returns {DB}
+     */
+    getDB(): DB;
+    private getLock;
+    private releaseLock;
+    /**
+     * lockId getter, only for tests
+     * @returns {number}
+     */
+    getLockId(): number;
     /**
      * number of already applied migrations
      *

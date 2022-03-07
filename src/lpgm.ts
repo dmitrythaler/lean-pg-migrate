@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import crypto from 'crypto'
 
 import pgPromise from 'pg-promise'
 import type * as T from 'pg-promise'
@@ -40,11 +41,11 @@ export type MigrationItself = {
 
 //  ---------------------------------
 export class Migration {
-
-  config: MigrationConfig
-  db: DB
-  log: (...args: any[]) => void
-  error: (...args: any[]) => void
+  private lockId: number
+  private config: MigrationConfig
+  private db: DB
+  private log: (...args: any[]) => void
+  private error: (...args: any[]) => void
 
   private constructor(cfg: MigrationConfig, db: DB) {
     this.config = cfg
@@ -52,6 +53,11 @@ export class Migration {
     const dummy = () => {}
     this.log = cfg.silent ? dummy : console.log.bind(console)
     this.error = cfg.silent ? dummy : console.error.bind(console)
+
+    const hash = crypto.createHash('SHAKE128', { outputLength: 7 })
+      .update(cfg.host + cfg.port + cfg.database + cfg.migrationsSchema + cfg.migrationsTable)
+      .digest('hex')
+    this.lockId = parseInt(hash, 16)
   }
 
   static async initialize(cfg?: MigrationConfig): Promise<Migration> {
@@ -122,6 +128,44 @@ export class Migration {
   }
 
   /**
+   * config getter
+   * @returns {MigrationConfig}
+   */
+  getConfig(): MigrationConfig {
+    return this.config
+  }
+
+  /**
+   * db getter
+   * @returns {DB}
+   */
+  getDB(): DB {
+    return this.db
+  }
+
+  private async getLock(): Promise<boolean> {
+    const { aquired } = await this.db.one(
+      'SELECT pg_try_advisory_lock($1) as aquired', [this.lockId]
+    )
+    return aquired
+  }
+
+  private async releaseLock(): Promise<boolean> {
+    const { released } = await this.db.one(
+      'SELECT pg_advisory_unlock($1) as released', [this.lockId]
+    )
+    return released
+  }
+
+  /**
+   * lockId getter, only for tests
+   * @returns {number}
+   */
+  getLockId(): number {
+    return this.lockId
+  }
+
+  /**
    * number of already applied migrations
    *
    * @returns {Promise<number>}
@@ -173,6 +217,12 @@ export class Migration {
    * @returns {Promise<number>} - number of applied migrations
    */
   async up(count?: number, dry = false): Promise<number> {
+    const lockAquired = await this.getLock()
+    if (!lockAquired) {
+      this.log(`Migration already locked! It seems to be executed by another service.`)
+      return 0
+    }
+
     let files: string[]
 
     try {
@@ -231,6 +281,8 @@ export class Migration {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations exec error: ${migFile}${er.toString()}`)
       throw er
+    } finally {
+      await this.releaseLock()
     }
   }
 
@@ -292,6 +344,12 @@ export class Migration {
       throw new Error(`Wrong migration number provided: ${count}`)
     }
 
+    const lockAquired = await this.getLock()
+    if (!lockAquired) {
+      this.log(`Migration already locked! It seems to be executed by another service.`)
+      return 0
+    }
+
     try {
       // get last applied migrations
       const rows = await this.db.any(
@@ -307,6 +365,8 @@ export class Migration {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
+    } finally {
+      await this.releaseLock()
     }
   }
 
@@ -317,6 +377,12 @@ export class Migration {
    * @returns {Promise<number>} - number of migrations rolled back
    */
   async rollbackAll(dry = false): Promise<number> {
+    const lockAquired = await this.getLock()
+    if (!lockAquired) {
+      this.log(`Migration already locked! It seems to be executed by another service.`)
+      return 0
+    }
+
     try {
       // get last applied migrations
       const rows = await this.db.any(
@@ -331,6 +397,8 @@ export class Migration {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
+    } finally {
+      await this.releaseLock()
     }
   }
 
@@ -341,6 +409,12 @@ export class Migration {
    * @returns {Promise<number>} - number of migrations rolled back
    */
   async rollbackGroup(dry = false): Promise<number> {
+    const lockAquired = await this.getLock()
+    if (!lockAquired) {
+      this.log(`Migration already locked! It seems to be executed by another service.`)
+      return 0
+    }
+
     try {
       const rows = await this.db.task(async t => {
         // get last applied migration
@@ -370,6 +444,8 @@ export class Migration {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
       this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
+    } finally {
+      await this.releaseLock()
     }
   }
 

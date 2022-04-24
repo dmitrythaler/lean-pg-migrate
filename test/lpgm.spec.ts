@@ -1,7 +1,7 @@
 import assert from 'assert'
 import fs from 'fs'
-import { Migration, createMigrationFile } from '../src'
-import type { MigrationConfig } from '../src'
+import { Migration, createMigrationFile } from '../'
+import type { MigrationConfig } from '../'
 
 import pgPromise from 'pg-promise'
 

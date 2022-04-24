@@ -4,9 +4,8 @@
   "description": "PostgreSQL simple migration tool",
   "author": "Dmitry Thaler <dmitry@thaler.dev>",
   "license": "MIT",
-  "type": "module",
-  "main": "lpgm.js",
-  "types": "lpgm.d.ts",
+  "main": "index.js",
+  "types": "index.d.ts",
   "repository": {
     "type": "git",
     "url": "git://github.com/dmitrythaler/lean-pg-migrate.git"
@@ -20,7 +19,7 @@
     "test:pg:exec": "yarn test:pg:start && yarn test; yarn test:pg:stop"
   },
   "bin": {
-    "lpgm": "./index.js"
+    "lpgm": "./lpgm.js"
   },
   "engines": {
     "node": ">=16"

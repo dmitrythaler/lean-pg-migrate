@@ -1,7 +1,7 @@
 #!/usr/bin/env -S node --no-warnings
 const dotenv = require('dotenv')
 const { Command, Option } = require('commander')
-const { Migration, createMigrationFile } = require('./lpgm.js')
+const { Migration, createMigrationFile } = require('./index.js')
 const pkg = require('./package.json')
 
 dotenv.config()
@@ -72,9 +72,9 @@ program.command('migrate')
         }
       }
     } catch (e) {
-      console.error('Command failed.')
+      console.error('Command failed: ', e.toString())
     } finally {
-      await migration.end()
+      await migration && migration.end()
     }
   })
 

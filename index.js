@@ -129,7 +129,8 @@ class Migration {
     }
     async loadMigration(migFile) {
         const migPathFile = path_1.default.resolve(path_1.default.join(this.config.migrationsDir, migFile));
-        return await Promise.resolve().then(() => __importStar(require(migPathFile)));
+        // return await Promise.resolve().then(() => __importStar(require(migPathFile)));
+        return await import(migPathFile)
     }
     /**
      * @private

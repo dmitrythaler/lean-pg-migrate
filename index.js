@@ -26,21 +26,36 @@ exports.createMigrationFile = exports.Migration = void 0;
 const fs_1 = __importDefault(require("fs"));
 const path_1 = __importDefault(require("path"));
 const crypto_1 = __importDefault(require("crypto"));
-const pg_promise_1 = __importDefault(require("pg-promise"));
-const pg_monitor_1 = __importDefault(require("pg-monitor"));
+const postgres_1 = __importDefault(require("postgres"));
 //  ---------------------------------
 class Migration {
-    constructor(cfg, db) {
+    /**
+     * @private @constructor
+     */
+    constructor(cfg, sql) {
         this.config = cfg;
-        this.db = db;
-        const dummy = () => { };
-        this.log = cfg.silent ? dummy : console.log.bind(console);
-        this.error = cfg.silent ? dummy : console.error.bind(console);
+        this.sql = sql;
+        this.table = sql(`${cfg.migrationsSchema}.${cfg.migrationsTable}`);
+        if (cfg.silent) {
+            this.log = () => { };
+            this.error = () => { };
+        }
+        else {
+            this.log = console.log.bind(console);
+            this.error = console.error.bind(console);
+        }
+        // gen lock id based on hashed connection parameters
         const hash = crypto_1.default.createHash('SHAKE128', { outputLength: 7 })
             .update(cfg.host + cfg.port + cfg.database + cfg.migrationsSchema + cfg.migrationsTable)
             .digest('hex');
         this.lockId = parseInt(hash, 16);
     }
+    /**
+     * Inits new Migration
+     *
+     * @param {MigrationConfig} cfg
+     * @returns initialized Migration rig
+     */
     static async initialize(cfg) {
         const { USER, PGUSER, PGHOST, PGPASSWORD, PGDATABASE, PGPORT, LPGM_SCHEMA, LPGM_TABLE, LPGM_DIR } = process.env;
         const config = {
@@ -49,74 +64,67 @@ class Migration {
             port: parseFloat(PGPORT) || 5432,
             user: PGUSER || USER,
             password: PGPASSWORD || null,
+            max: 20,
+            idle_timeout: 30,
             migrationsSchema: LPGM_SCHEMA || 'public',
             migrationsTable: LPGM_TABLE || 'migrations',
             migrationsDir: LPGM_DIR || './migrations',
-            monitor: false,
             silent: false,
             ...cfg
         };
-        const pgpOpts = { capSQL: true };
-        const pgp = (0, pg_promise_1.default)(pgpOpts);
-        if (config.monitor) {
-            pg_monitor_1.default.attach(pgpOpts);
-            pg_monitor_1.default.setTheme('matrix');
-        }
-        const db = pgp({
+        const sql = (0, postgres_1.default)({
             user: config.user,
             host: config.host,
             database: config.database,
             password: config.password,
             port: config.port,
-            max: 20,
-            idleTimeoutMillis: 30000
+            max: config.max,
+            idle_timeout: config.idle_timeout
         });
         try {
-            await db.task(async (t) => {
-                // after connect check if migration table is here
-                const tables = await t.any('SELECT table_name FROM information_schema.tables WHERE table_schema = $1 AND table_name = $2', [config.migrationsSchema, config.migrationsTable]);
-                if (!tables.length) {
-                    // table does not exist yet
-                    await t.none('CREATE TABLE $1~.$2~ (id SERIAL PRIMARY KEY, name TEXT, applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), group_id INTEGER)', [config.migrationsSchema, config.migrationsTable]);
-                }
-            });
+            const table = sql(`${config.migrationsSchema}.${config.migrationsTable}`);
+            await sql `
+        CREATE TABLE IF NOT EXISTS ${table} (
+          id SERIAL PRIMARY KEY,
+          name TEXT,
+          applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          group_id INTEGER
+        )
+        `;
         }
         catch (er) {
-            if (!config.silent) {
-                console.error('Migration init error:', er.toString());
-            }
+            console.error('Migration init error:', er.toString());
             throw er;
         }
-        return new Migration(config, db);
+        return new Migration(config, sql);
     }
     /**
-     * config getter
-     * @returns {MigrationConfig}
+     * some getters below, mainly for testing
      */
     getConfig() {
         return this.config;
     }
-    /**
-     * db getter
-     * @returns {DB}
-     */
-    getDB() {
-        return this.db;
+    getSql() {
+        return this.sql;
     }
-    async getLock() {
-        const { aquired } = await this.db.one('SELECT pg_try_advisory_lock($1) as aquired', [this.lockId]);
-        return aquired;
-    }
-    async releaseLock() {
-        const { released } = await this.db.one('SELECT pg_advisory_unlock($1) as released', [this.lockId]);
-        return released;
-    }
-    /**
-     * lockId getter, only for tests
-     * @returns {number}
-     */
     getLockId() {
         return this.lockId;
+    }
+    /**
+     * Aquires advisory lock based on hash
+     * @returns {Sql}
+     */
+    async aquireLock() {
+        const [row] = await this.sql `
+      SELECT pg_try_advisory_lock(${this.lockId}) as aquired
+      `;
+        return row.aquired;
+    }
+    async releaseLock() {
+        const [row] = await this.sql `
+      SELECT pg_advisory_unlock(${this.lockId}) as released
+      `;
+        return row.released;
     }
     /**
      * number of already applied migrations
@@ -124,30 +132,29 @@ class Migration {
      * @returns {Promise<number>}
      */
     async appliedMigrationsNum() {
-        const { count } = await this.db.one('SELECT COUNT(*) as count FROM $1~.$2~', [this.config.migrationsSchema, this.config.migrationsTable]);
-        return parseFloat(count);
+        const [row] = await this.sql `
+      SELECT COUNT(*) as count FROM ${this.table}
+      `;
+        return parseFloat(row.count);
     }
     async loadMigration(migFile) {
         const migPathFile = path_1.default.resolve(path_1.default.join(this.config.migrationsDir, migFile));
-        // return await Promise.resolve().then(() => __importStar(require(migPathFile)));
-        return await import(migPathFile)
+        return await Promise.resolve().then(() => __importStar(require(migPathFile)));
     }
     /**
      * @private
      * apply 1 migrations
      */
     async oneUp(migFile, groupId) {
-        await this.db.tx(async (t) => {
+        await this.sql.begin(async (t) => {
             try {
                 const { up } = await this.loadMigration(migFile);
                 up && await up(t);
+                await t `
+          INSERT INTO ${this.table} (name, group_id)
+            VALUES (${migFile}, ${groupId})
+          `;
                 this.log(`+ Migration "${migFile}" applied.`);
-                await t.none(`INSERT INTO $1~.$2~ (name, group_id) VALUES ($3, $4)`, [
-                    this.config.migrationsSchema,
-                    this.config.migrationsTable,
-                    migFile,
-                    groupId
-                ]);
             }
             catch (er) {
                 er.migration = migFile;
@@ -163,7 +170,7 @@ class Migration {
      * @returns {Promise<number>} - number of applied migrations
      */
     async up(count, dry = false) {
-        const lockAquired = await this.getLock();
+        const lockAquired = await this.aquireLock();
         if (!lockAquired) {
             this.log(`Migration already locked! It seems to be executed by another service.`);
             return 0;
@@ -185,10 +192,10 @@ class Migration {
         }
         try {
             // get the last applied migration
-            const last = await this.db.oneOrNone('SELECT name FROM $1~.$2~ ORDER BY id DESC LIMIT 1', [
-                this.config.migrationsSchema,
-                this.config.migrationsTable
-            ]);
+            const [last] = await this.sql `
+        SELECT name FROM ${this.table}
+          ORDER BY id DESC LIMIT 1
+        `;
             if (last) {
                 // remove already applied migrations from the file list
                 while (files.length && files[0] !== last.name) {
@@ -231,16 +238,12 @@ class Migration {
      * rollback 1 migrations
      */
     async oneDown(migFile, id) {
-        await this.db.tx(async (t) => {
+        await this.sql.begin(async (t) => {
             try {
                 const { down } = await this.loadMigration(migFile);
                 down && await down(t);
                 this.log(`- Migration "${migFile}" rolled back.`);
-                await t.none(`DELETE FROM $1~.$2~ WHERE id = $3`, [
-                    this.config.migrationsSchema,
-                    this.config.migrationsTable,
-                    id
-                ]);
+                await t `DELETE FROM ${this.table} WHERE id = ${id}`;
             }
             catch (er) {
                 er.migration = migFile;
@@ -280,18 +283,17 @@ class Migration {
             // count not provided or negative or zero
             throw new Error(`Wrong migration number provided: ${count}`);
         }
-        const lockAquired = await this.getLock();
+        const lockAquired = await this.aquireLock();
         if (!lockAquired) {
             this.log(`Migration already locked! It seems to be executed by another service.`);
             return 0;
         }
         try {
             // get last applied migrations
-            const rows = await this.db.any('SELECT id, name FROM $1~.$2~ ORDER BY id DESC LIMIT $3', [
-                this.config.migrationsSchema,
-                this.config.migrationsTable,
-                count
-            ]);
+            const rows = await this.sql `
+        SELECT id, name FROM ${this.table}
+          ORDER BY id DESC LIMIT ${count}
+        `;
             return await this.execDown(rows, dry);
         }
         catch (er) {
@@ -310,17 +312,17 @@ class Migration {
      * @returns {Promise<number>} - number of migrations rolled back
      */
     async rollbackAll(dry = false) {
-        const lockAquired = await this.getLock();
+        const lockAquired = await this.aquireLock();
         if (!lockAquired) {
             this.log(`Migration already locked! It seems to be executed by another service.`);
             return 0;
         }
         try {
-            // get last applied migrations
-            const rows = await this.db.any('SELECT id, name FROM $1~.$2~ ORDER BY id DESC', [
-                this.config.migrationsSchema,
-                this.config.migrationsTable
-            ]);
+            // get all applied migrations
+            const rows = await this.sql `
+        SELECT id, name FROM ${this.table}
+          ORDER BY id DESC
+        `;
             return await this.execDown(rows, dry);
         }
         catch (er) {
@@ -339,27 +341,24 @@ class Migration {
      * @returns {Promise<number>} - number of migrations rolled back
      */
     async rollbackGroup(dry = false) {
-        const lockAquired = await this.getLock();
+        const lockAquired = await this.aquireLock();
         if (!lockAquired) {
             this.log(`Migration already locked! It seems to be executed by another service.`);
             return 0;
         }
         try {
-            const rows = await this.db.task(async (t) => {
+            const rows = await this.sql.begin(async (t) => {
                 // get last applied migration
-                const row = await t.oneOrNone('SELECT group_id FROM $1~.$2~ ORDER BY id DESC LIMIT 1', [
-                    this.config.migrationsSchema,
-                    this.config.migrationsTable
-                ]);
-                if (!row) {
+                const [last] = await t `SELECT group_id FROM ${this.table} ORDER BY id DESC LIMIT 1`;
+                if (!last) {
                     return [];
                 }
                 // get migrations with the same group as the last one
-                return await t.many('SELECT id, name FROM $1~.$2~ WHERE group_id = $3 ORDER BY id DESC', [
-                    this.config.migrationsSchema,
-                    this.config.migrationsTable,
-                    row.group_id
-                ]);
+                return await t `
+          SELECT id, name FROM ${this.table}
+            WHERE group_id = ${last.group_id}
+            ORDER BY id DESC
+          `;
             });
             return await this.execDown(rows, dry);
         }
@@ -376,25 +375,23 @@ class Migration {
      * close DB connection and release pool
      */
     async end() {
-        await this.db.$pool.end();
+        await this.sql.end( /*{ timeout: 5 }*/);
     }
 }
 exports.Migration = Migration;
 //  ----------------------------------------------------------------------------------------------//
 const fileContent = `
-// trx - pg-promise's transaction/task (ITask<{}>)
-// please refer to https://vitaly-t.github.io/pg-promise/Task.html
+// sql - transaction from Postgres.js
+// please refer to https://github.com/porsager/postgres
 
-export const up = async function(trx) {
-  return await trx.none(
-    'CREATE TABLE one (id SERIAL PRIMARY KEY, name TEXT, creted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())'
-  )
+export const up = async function(sql) {
+  return await sql\`
+    CREATE TABLE one (id SERIAL PRIMARY KEY, name TEXT, creted_at TIMESTAMP WITH TIME ZONE DEFAULT NOW())
+    \`
 }
 
-export const down = async function(trx) {
-  return await trx.none(
-    'DROP TABLE one'
-  )
+export const down = async function(sql) {
+  return await sql\`DROP TABLE one\`
 }
 `;
 /**

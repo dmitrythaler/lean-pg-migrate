@@ -28,6 +28,7 @@
   "keywords": [
     "postgres",
     "postgresql",
+    "postgres.js",
     "migration",
     "typescript",
     "ts"

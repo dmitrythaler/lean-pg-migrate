@@ -1,10 +1,10 @@
-const up = async function (trx) {
+const up = async function (sql) {
 
   try {
     // console.log('1.js UP!')
-    await trx.none(
-      'CREATE TABLE migrations4test_1 (id SERIAL PRIMARY KEY, name TEXT)'
-    )
+    await sql`
+      CREATE TABLE migrations4test_1 (id SERIAL PRIMARY KEY, name TEXT)
+      `
     // console.log('1.js UP! done')
   } catch(error) {
     console.error( 'shit happens', error )
@@ -13,10 +13,10 @@ const up = async function (trx) {
 
 }
 
-const down = async function (trx) {
-  await trx.none(
-    'DROP TABLE migrations4test_1'
-  )
+const down = async function (sql) {
+  await sql`
+    DROP TABLE migrations4test_1
+    `
 }
 
 module.exports = { up, down }

@@ -1,19 +1,14 @@
-import type * as T from 'pg-promise';
-export declare type DB = T.IDatabase<{}>;
-export declare type DBConnection = {
-    database?: string;
-    host?: string;
-    port?: number;
-    user?: string;
-    password?: string;
-    ssl?: boolean;
-};
+import type * as T from 'postgres';
+declare type Keyed = Record<string, any>;
+export declare type DBConnection = T.Options<Keyed>;
+export declare type Sql = T.Sql<Keyed>;
+export declare type SqlRecord = Record<string, T.SerializableParameter>;
+export declare type TrSql = T.TransactionSql<Keyed>;
 export declare type MigrationConfig = DBConnection & {
-    migrationsSchema?: string;
-    migrationsTable?: string;
-    migrationsDir?: string;
-    monitor?: boolean;
-    silent?: boolean;
+    migrationsSchema: string;
+    migrationsTable: string;
+    migrationsDir: string;
+    silent: boolean;
 };
 export declare type MigrationRecord = {
     id?: number;
@@ -22,34 +17,39 @@ export declare type MigrationRecord = {
     group_id?: number;
 };
 export declare type MigrationItself = {
-    up?: (t: T.ITask<{}>) => Promise<void>;
-    down?: (t: T.ITask<{}>) => Promise<void>;
-} & Record<string, unknown>;
+    up?: (t: TrSql) => Promise<void>;
+    down?: (t: TrSql) => Promise<void>;
+} & Keyed;
 export declare class Migration {
-    private lockId;
-    private config;
-    private db;
+    private readonly config;
+    private readonly lockId;
+    private readonly sql;
+    private readonly table;
     private log;
     private error;
+    /**
+     * @private @constructor
+     */
     private constructor();
+    /**
+     * Inits new Migration
+     *
+     * @param {MigrationConfig} cfg
+     * @returns initialized Migration rig
+     */
     static initialize(cfg?: MigrationConfig): Promise<Migration>;
     /**
-     * config getter
-     * @returns {MigrationConfig}
+     * some getters below, mainly for testing
      */
     getConfig(): MigrationConfig;
-    /**
-     * db getter
-     * @returns {DB}
-     */
-    getDB(): DB;
-    private getLock;
-    private releaseLock;
-    /**
-     * lockId getter, only for tests
-     * @returns {number}
-     */
+    getSql(): Sql;
     getLockId(): number;
+    /**
+     * Aquires advisory lock based on hash
+     * @returns {Sql}
+     */
+    aquireLock(): Promise<boolean>;
+    releaseLock(): Promise<boolean>;
     /**
      * number of already applied migrations
      *
@@ -115,3 +115,4 @@ export declare class Migration {
  * @returns {Promise<string>} - name of the new file
  */
 export declare const createMigrationFile: (name: string, dir?: string) => string;
+export {};

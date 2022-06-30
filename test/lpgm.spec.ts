@@ -1,9 +1,10 @@
 import assert from 'assert'
 import fs from 'fs'
+import postgres from 'postgres'
+
 import { Migration, createMigrationFile } from '../'
 import type { MigrationConfig } from '../'
 
-import pgPromise from 'pg-promise'
 
 // to start PosgreSQL server inside docker container pls run
 // > docker run -p 45432:5432 --name tmp-pg --rm -e POSTGRES_PASSWORD=testerwashere -d postgres:latest
@@ -19,9 +20,9 @@ const cfg: MigrationConfig = {
   password: env.PGPASSWORD || 'testerwashere',
   port: parseFloat(env.PGPORT || '45432'),
   migrationsDir: 'test/migrations',
+  migrationsSchema: 'public',
   migrationsTable: 'migrations4test',
-  silent: true,
-  monitor: false
+  silent: true
 }
 
 describe('Migration usage suite', () => {
@@ -30,28 +31,30 @@ describe('Migration usage suite', () => {
   let lockId: number
 
   const _describe = async () => {
-    return await migration.getDB().any(
-      `SELECT column_name as col, data_type as type FROM information_schema.columns WHERE table_name = '${cfg.migrationsTable}_1'`
-    )
+    // const table = migration.getSql()(cfg.migrationsTable + '_1')
+    // const table = migration.getSql()(cfg.migrationsTable)
+    return await migration.getSql()`
+      SELECT column_name as col, data_type as type FROM information_schema.columns
+        WHERE table_name = ${cfg.migrationsTable + '_1'}
+      `
   }
 
   beforeAll(async () => {
-    const pgp = pgPromise({})
-    const auxDb = pgp({
+    const sql = postgres({
       user: cfg.user,
       host: cfg.host,
       database: cfg.database,
       password: cfg.password,
       port: cfg.port,
-      max: 20,
-      idleTimeoutMillis: 30000
+      max: 10,
+      idle_timeout: 30,
+      onnotice: () => {}
     })
-    await auxDb.none(`DROP TABLE IF EXISTS ${cfg.migrationsTable}`)
-    await auxDb.none(`DROP TABLE IF EXISTS ${cfg.migrationsTable}_1`)
-    await auxDb.$pool.end()
-
-    migration = await Migration.initialize(cfg)
-    lockId = migration.getLockId()
+    const tbl = sql(cfg.migrationsTable)
+    const tbl_1 = sql(cfg.migrationsTable + '_1')
+    await sql`DROP TABLE IF EXISTS ${tbl}`
+    await sql`DROP TABLE IF EXISTS ${tbl_1}`
+    await sql.end()
   })
 
   afterAll(async () => {
@@ -59,6 +62,13 @@ describe('Migration usage suite', () => {
   })
 
   describe('Migrations', () => {
+
+    it('should initialize Migration', async () => {
+      migration = await Migration.initialize(cfg)
+      lockId = migration.getLockId()
+      assert.ok(migration)
+      assert.ok(lockId)
+    })
 
     it('should start from 0 applied migrations', async () => {
       const res = await migration.appliedMigrationsNum()
@@ -183,6 +193,8 @@ describe('Migration usage suite', () => {
       let res = await migration.up(1)
       assert.strictEqual(res, 1)
       let desc = await _describe()
+      // console.log(desc)
+
       assert.strictEqual(desc.length, 2)
       assert.strictEqual(desc[0].col, 'id')
       assert.strictEqual(desc[1].col, 'name')
@@ -208,6 +220,8 @@ describe('Migration usage suite', () => {
       let res = await migration.down(1)
       assert.strictEqual(res, 1)
       let desc = await _describe()
+      // console.log(desc)
+
       assert.strictEqual(desc.length, 3)
       assert.strictEqual(desc[0].col, 'id')
       assert.strictEqual(desc[1].col, 'dummy')
@@ -243,31 +257,28 @@ describe('Migration usage suite', () => {
   })
 
   describe('Un/Lock', () => {
-    let auxDb
+    let auxSql
 
     beforeAll(async () => {
       await migration.up(2)
       let res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 2)
 
-      const pgp = pgPromise({})
-      auxDb = pgp({
+      auxSql = postgres({
         user: cfg.user,
         host: cfg.host,
         database: cfg.database,
         password: cfg.password,
         port: cfg.port,
         max: 20,
-        idleTimeoutMillis: 30000
+        idle_timeout: 30
       })
-      const { lock } = await auxDb.one(
-        'SELECT pg_try_advisory_lock($1) as lock', [lockId]
-      )
-      assert.strictEqual(lock, true)
+      const [row] = await auxSql`SELECT pg_try_advisory_lock(${lockId}) as lock`
+      assert.strictEqual(row.lock, true)
     })
 
     afterAll(async () => {
-      auxDb && await auxDb.$pool.end()
+      auxSql && await auxSql.end()
       await migration.rollbackAll()
     })
 
@@ -291,9 +302,9 @@ describe('Migration usage suite', () => {
       assert.strictEqual(res, 2)
     })
 
-    it('shouldn migrate/rollback after lock is released', async () => {
-      await auxDb.$pool.end()
-      auxDb = null
+    it('should migrate/rollback after lock is released', async () => {
+      await auxSql.end()
+      auxSql = null
 
       let res = await migration.up(1)
       assert.strictEqual(res, 1)

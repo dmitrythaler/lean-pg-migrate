@@ -15,10 +15,10 @@ export type SqlRecord = Record<string, T.SerializableParameter>
 export type TrSql = T.TransactionSql<Keyed>
 
 export type MigrationConfig = DBConnection & {
-  migrationsSchema?: string
-  migrationsTable?: string
-  migrationsDir?: string
-  silent?: boolean
+  migrationsSchema: string
+  migrationsTable: string
+  migrationsDir: string
+  silent: boolean
 }
 
 export type MigrationRecord = {
@@ -35,7 +35,7 @@ export type MigrationItself = {
 
 //  ---------------------------------
 export class Migration {
-  private config: MigrationConfig
+  private readonly config: MigrationConfig
   private readonly lockId: number
   private readonly sql: Sql
   private readonly table: T.Helper<string>
@@ -43,21 +43,35 @@ export class Migration {
   private log: (...args: any[]) => void
   private error: (...args: any[]) => void
 
+  /**
+   * @private @constructor
+   */
   private constructor(cfg: MigrationConfig, sql: Sql) {
     this.config = cfg
     this.sql = sql
     this.table = sql(`${cfg.migrationsSchema}.${cfg.migrationsTable}`)
 
-    const dummy = () => {}
-    this.log = cfg.silent ? dummy : console.log.bind(console)
-    this.error = cfg.silent ? dummy : console.error.bind(console)
+    if (cfg.silent) {
+      this.log = () => {}
+      this.error = () => {}
+    } else {
+      this.log = console.log.bind(console)
+      this.error = console.error.bind(console)
+    }
 
+    // gen lock id based on hashed connection parameters
     const hash = crypto.createHash('SHAKE128', { outputLength: 7 })
       .update(cfg.host + cfg.port + cfg.database + cfg.migrationsSchema + cfg.migrationsTable)
       .digest('hex')
     this.lockId = parseInt(hash, 16)
   }
 
+  /**
+   * Inits new Migration
+   *
+   * @param {MigrationConfig} cfg
+   * @returns initialized Migration rig
+   */
   static async initialize(cfg?: MigrationConfig): Promise<Migration> {
     const {
       USER,
@@ -77,6 +91,8 @@ export class Migration {
       port: parseFloat(PGPORT) || 5432,
       user: PGUSER || USER,
       password: PGPASSWORD || null,
+      max: 20,
+      idle_timeout: 30,
       migrationsSchema: LPGM_SCHEMA || 'public',
       migrationsTable: LPGM_TABLE || 'migrations',
       migrationsDir: LPGM_DIR || './migrations',
@@ -90,40 +106,47 @@ export class Migration {
       database: config.database,
       password: config.password,
       port: config.port,
-      max: 20,
-      idle_timeout: 30
+      max: config.max,
+      idle_timeout: config.idle_timeout
     })
 
+
     try {
+      const table = sql(`${config.migrationsSchema}.${config.migrationsTable}`)
       await sql`
-        CREATE TABLE IF NOT EXIST ${config.migrationsSchema}.${config.migrationsTable}
-          (id SERIAL PRIMARY KEY, name TEXT, applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(), group_id INTEGER)
+        CREATE TABLE IF NOT EXISTS ${table} (
+          id SERIAL PRIMARY KEY,
+          name TEXT,
+          applied_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          group_id INTEGER
+        )
         `
     } catch (er) {
-      if (!config.silent) {
-        console.error('Migration init error:', er.toString())
-      }
+      console.error('Migration init error:', er.toString())
       throw er
     }
     return new Migration(config, sql)
   }
 
   /**
-   * config getter
-   * @returns {MigrationConfig}
+   * some getters below, mainly for testing
    */
   getConfig(): MigrationConfig {
     return this.config
   }
 
-  /**
-   * db getter
-   * @returns {Sql}
-   */
   getSql(): Sql {
     return this.sql
   }
 
+  getLockId(): number {
+    return this.lockId
+  }
+
+  /**
+   * Aquires advisory lock based on hash
+   * @returns {Sql}
+   */
   async aquireLock(): Promise<boolean> {
     const [row] = await this.sql`
       SELECT pg_try_advisory_lock(${this.lockId}) as aquired
@@ -136,14 +159,6 @@ export class Migration {
       SELECT pg_advisory_unlock(${this.lockId}) as released
       `
     return row.released
-  }
-
-  /**
-   * lockId getter, only for tests
-   * @returns {number}
-   */
-  getLockId(): number {
-    return this.lockId
   }
 
   /**

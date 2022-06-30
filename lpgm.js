@@ -29,11 +29,11 @@ program
 program.addHelpText('after', `
 Examples:
   lpgm new create-some-table      # create new migration file
-  lpgm new create-another-table   # same
+  lpgm new create another table   # same
   lpgm migrate 1                  # execute 1 migration
   lpgm up 1                       # "up" command is an alias of "migrate"
   lpgm migrate                    # execute all migration
-  lpgm rollback all               # rollback ALL migrations, dangerous - it turns the DB to it's initial state
+  lpgm rollback all               # rollback ALL migrations, dangerous - it turns the DB to it's initial/empty state
   lpgm rollback group             # rollback last executed group of migrations
   lpgm rollback 1                 # rollback 1 migration
   lpgm down 1                     # "down" command is an alias of "rollback"

@@ -28,7 +28,6 @@
   "keywords": [
     "postgres",
     "postgresql",
-    "pg-promise",
     "migration",
     "typescript",
     "ts"
@@ -36,8 +35,7 @@
   "dependencies": {
     "commander": "^9.0.0",
     "dotenv": "^16.0.0",
-    "pg-monitor": "^1.4.1",
-    "pg-promise": "^10.11.1"
+    "postgres": "^3.2.4"
   },
   "devDependencies": {
     "@types/jest": "^27.4.0",

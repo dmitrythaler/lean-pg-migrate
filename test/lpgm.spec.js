@@ -1,9 +1,9 @@
-import assert from 'assert'
+import test from 'node:test'
+import assert from 'node:assert'
 import fs from 'fs'
 import postgres from 'postgres'
 
-import { Migration, createMigrationFile } from '../'
-import type { MigrationConfig } from '../'
+import { Migration, createMigrationFile } from '../index.js'
 
 
 // to start PosgreSQL server inside docker container pls run
@@ -14,32 +14,30 @@ import type { MigrationConfig } from '../'
 
 const env = process.env
 
-const cfg: MigrationConfig = {
-  database: env.PGDATABASE || 'postgres',
-  user: env.PGUSER || 'postgres',
-  password: env.PGPASSWORD || 'testerwashere',
-  port: parseFloat(env.PGPORT || '45432'),
-  migrationsDir: 'test/migrations',
-  migrationsSchema: 'public',
-  migrationsTable: 'migrations4test',
-  silent: true
-}
+test('Migration usage suite', { concurrency: false }, async t0 => {
 
-describe('Migration usage suite', () => {
-
-  let migration: Migration
-  let lockId: number
+  let migration
+  let lockId
 
   const _describe = async () => {
-    // const table = migration.getSql()(cfg.migrationsTable + '_1')
-    // const table = migration.getSql()(cfg.migrationsTable)
     return await migration.getSql()`
       SELECT column_name as col, data_type as type FROM information_schema.columns
         WHERE table_name = ${cfg.migrationsTable + '_1'}
       `
   }
 
-  beforeAll(async () => {
+  const cfg = {
+    database: env.PGDATABASE || 'postgres',
+    user: env.PGUSER || 'postgres',
+    password: env.PGPASSWORD || 'testerwashere',
+    port: parseFloat(env.PGPORT || '45432'),
+    migrationsDir: 'test/migrations',
+    migrationsSchema: 'public',
+    migrationsTable: 'migrations4test',
+    silent: true
+  }
+
+  await t0.test('Prep', async t => {
     const sql = postgres({
       user: cfg.user,
       host: cfg.host,
@@ -57,41 +55,38 @@ describe('Migration usage suite', () => {
     await sql.end()
   })
 
-  afterAll(async () => {
-    await migration.end()
-  })
+  await t0.test('Migrations', async t => {
 
-  describe('Migrations', () => {
-
-    it('should initialize Migration', async () => {
+    await t.test('should initialize Migration', async t => {
       migration = await Migration.initialize(cfg)
       lockId = migration.getLockId()
       assert.ok(migration)
       assert.ok(lockId)
     })
 
-    it('should start from 0 applied migrations', async () => {
+    await t.test('should start from 0 applied migrations', async () => {
       const res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 0)
     })
 
-    it('should migrate all up', async () => {
+    await t.test('should migrate all up', async () => {
       let res = await migration.up()
       assert.strictEqual(res, 4)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 4)
+
       // const desc = await _describe()
       // console.log('table: ', desc)
     })
 
-    it('shouldn\'t migrate up again', async () => {
+    await t.test('shouldn\'t migrate up again', async () => {
       let res = await migration.up()
       assert.strictEqual(res, 0)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 4)
     })
 
-    it('shouldn\'t allow implicitly rollback all migrations by providing incorrect parameter', async () => {
+    await t.test('shouldn\'t allow implicitly rollback all migrations by providing incorrect parameter', async () => {
       await assert.rejects(async () => {
         await migration.down(0)
       })
@@ -102,49 +97,49 @@ describe('Migration usage suite', () => {
       assert.strictEqual(res, 4)
     })
 
-    it('should rollback all migrations', async () => {
+    await t.test('should rollback all migrations', async () => {
       let res = await migration.rollbackAll()
       assert.strictEqual(res, 4)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 0)
     })
 
-    it('shouldn\'t rollback all again', async () => {
+    await t.test('shouldn\'t rollback all again', async () => {
       let res = await migration.rollbackAll()
       assert.strictEqual(res, 0)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 0)
     })
 
-    it('should execute the specified number of migrations', async () => {
+    await t.test('should execute the specified number of migrations', async () => {
       let res = await migration.up(3)
       assert.strictEqual(res, 3)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 3)
     })
 
-    it('should rollback the specified number of migrations', async () => {
+    await t.test('should rollback the specified number of migrations', async () => {
       let res = await migration.down(2)
       assert.strictEqual(res, 2)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 1)
     })
 
-    it('should migrate only possible number', async () => {
+    await t.test('should migrate only possible number', async () => {
       let res = await migration.up(1000)
       assert.strictEqual(res, 3)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 4)
     })
 
-    it('should rollback only possible number', async () => {
+    await t.test('should rollback only possible number', async () => {
       let res = await migration.down(1000)
       assert.strictEqual(res, 4)
       res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 0)
     })
 
-    it('should rollback by groups', async () => {
+    await t.test('should rollback by groups', async () => {
       let res = await migration.up(2)
       assert.strictEqual(res, 2)
       res = await migration.up(2)
@@ -162,7 +157,7 @@ describe('Migration usage suite', () => {
       assert.strictEqual(res, 0)
     })
 
-    it('should do nothing in dry-run mode', async () => {
+    await t.test('should do nothing in dry-run mode', async () => {
       let res = await migration.up(2)
       assert.strictEqual(res, 2)
       res = await migration.appliedMigrationsNum()
@@ -189,7 +184,7 @@ describe('Migration usage suite', () => {
       assert.strictEqual(res, 0)
     })
 
-    it('should correctly exec up migrations', async () => {
+    await t.test('should correctly exec up migrations', async () => {
       let res = await migration.up(1)
       assert.strictEqual(res, 1)
       let desc = await _describe()
@@ -216,7 +211,7 @@ describe('Migration usage suite', () => {
       assert.strictEqual(desc[3].type, 'text')
     })
 
-    it('should correctly exec down migrations', async () => {
+    await t.test('should correctly exec down migrations', async () => {
       let res = await migration.down(1)
       assert.strictEqual(res, 1)
       let desc = await _describe()
@@ -245,7 +240,7 @@ describe('Migration usage suite', () => {
       assert.strictEqual(desc.length, 0)
     })
 
-    it('should create migration file', () => {
+    await t.test('should create migration file', () => {
       const fn = createMigrationFile('something to think about', cfg.migrationsDir)
       assert.ok(fn)
       assert.ok(fn.length)
@@ -256,10 +251,10 @@ describe('Migration usage suite', () => {
     })
   })
 
-  describe('Un/Lock', () => {
+  await t0.test('Un/Lock', async t => {
     let auxSql
 
-    beforeAll(async () => {
+    await t.test('Prep', async () => {
       await migration.up(2)
       let res = await migration.appliedMigrationsNum()
       assert.strictEqual(res, 2)
@@ -277,12 +272,7 @@ describe('Migration usage suite', () => {
       assert.strictEqual(row.lock, true)
     })
 
-    afterAll(async () => {
-      auxSql && await auxSql.end()
-      await migration.rollbackAll()
-    })
-
-    it('shouldn\'t migrate if lock is not aquired', async () => {
+    await t.test('shouldn\'t migrate if lock is not aquired', async () => {
       let res = await migration.up(2)
       assert.strictEqual(res, 0)
       res = await migration.up()
@@ -291,7 +281,7 @@ describe('Migration usage suite', () => {
       assert.strictEqual(res, 2)
     })
 
-    it('shouldn\'t rollback if lock is not aquired', async () => {
+    await t.test('shouldn\'t rollback if lock is not aquired', async () => {
       let res = await migration.rollbackGroup()
       assert.strictEqual(res, 0)
       res = await migration.rollbackAll()
@@ -302,7 +292,7 @@ describe('Migration usage suite', () => {
       assert.strictEqual(res, 2)
     })
 
-    it('should migrate/rollback after lock is released', async () => {
+    await t.test('should migrate/rollback after lock is released', async () => {
       await auxSql.end()
       auxSql = null
 
@@ -316,5 +306,18 @@ describe('Migration usage suite', () => {
       assert.strictEqual(res, 1)
     })
 
+    await t.test('Cleaning up', async () => {
+      auxSql && await auxSql.end()
+      await migration.rollbackAll()
+    })
   })
+
+  await t0.test('Cleaning up', async t => {
+    migration && await migration.end()
+  })
+
+  // evil test to make TAP to show anything
+  // t0.test('synchronous failing test', () => {
+  //   assert.strictEqual(0, 1)
+  // })
 })

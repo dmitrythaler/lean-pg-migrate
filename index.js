@@ -1,34 +1,9 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.createMigrationFile = exports.Migration = void 0;
-const fs_1 = __importDefault(require("fs"));
-const path_1 = __importDefault(require("path"));
-const crypto_1 = __importDefault(require("crypto"));
-const postgres_1 = __importDefault(require("postgres"));
+import fs from 'fs';
+import path from 'path';
+import crypto from 'crypto';
+import postgres from 'postgres';
 //  ---------------------------------
-class Migration {
+export class Migration {
     /**
      * @private @constructor
      */
@@ -45,7 +20,7 @@ class Migration {
             this.error = console.error.bind(console);
         }
         // gen lock id based on hashed connection parameters
-        const hash = crypto_1.default.createHash('SHAKE128', { outputLength: 7 })
+        const hash = crypto.createHash('SHAKE128', { outputLength: 7 })
             .update(cfg.host + cfg.port + cfg.database + cfg.migrationsSchema + cfg.migrationsTable)
             .digest('hex');
         this.lockId = parseInt(hash, 16);
@@ -72,7 +47,7 @@ class Migration {
             silent: false,
             ...cfg
         };
-        const sql = (0, postgres_1.default)({
+        const sql = postgres({
             user: config.user,
             host: config.host,
             database: config.database,
@@ -138,8 +113,8 @@ class Migration {
         return parseFloat(row.count);
     }
     async loadMigration(migFile) {
-        const migPathFile = path_1.default.resolve(path_1.default.join(this.config.migrationsDir, migFile));
-        return await Promise.resolve().then(() => __importStar(require(migPathFile)));
+        const migPathFile = path.resolve(path.join(this.config.migrationsDir, migFile));
+        return await import(migPathFile);
     }
     /**
      * @private
@@ -177,17 +152,17 @@ class Migration {
         }
         let files;
         try {
-            files = fs_1.default.readdirSync(this.config.migrationsDir, { withFileTypes: true })
+            files = fs.readdirSync(this.config.migrationsDir, { withFileTypes: true })
                 .filter(dr => dr.isFile() && dr.name.slice(-3) === '.js')
                 .map(dr => dr.name)
                 .sort();
         }
         catch (er) {
-            this.error(`Error reading "${path_1.default.resolve(this.config.migrationsDir)}" directory!`);
+            this.error(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`);
             throw er;
         }
         if (!files.length) {
-            this.log(`No migrations found in "${path_1.default.resolve(this.config.migrationsDir)}" directory!`);
+            this.log(`No migrations found in "${path.resolve(this.config.migrationsDir)}" directory!`);
             return 0;
         }
         try {
@@ -378,7 +353,6 @@ class Migration {
         await this.sql.end( /*{ timeout: 5 }*/);
     }
 }
-exports.Migration = Migration;
 //  ----------------------------------------------------------------------------------------------//
 const fileContent = `
 // sql - transaction from Postgres.js
@@ -401,14 +375,14 @@ export const down = async function(sql) {
  * @param {string} - directory name
  * @returns {Promise<string>} - name of the new file
  */
-const createMigrationFile = (name, dir = './migrations') => {
+export const createMigrationFile = (name, dir = './migrations') => {
     // 2022-02-15T21:48:36.672Z to 20220215-214836
     const prefix = (new Date()).toISOString().split('.')[0].replace(/\-/g, '').replace(/\:/g, '').replace(/T/g, '-');
     // 20220215-214836-name-lowercased-and-spaces-replaced-with-dashes
     const fileName = `${prefix}-${name.toLowerCase().replace(/\s/g, '-')}.js`;
     try {
-        const pathFile = path_1.default.join(dir, fileName);
-        fs_1.default.writeFileSync(pathFile, fileContent);
+        const pathFile = path.join(dir, fileName);
+        fs.writeFileSync(pathFile, fileContent);
         return pathFile;
     }
     catch (error) {
@@ -416,4 +390,3 @@ const createMigrationFile = (name, dir = './migrations') => {
         return '';
     }
 };
-exports.createMigrationFile = createMigrationFile;

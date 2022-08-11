@@ -10,21 +10,20 @@ const program = new Command()
 program
   .name('lpgm')
   .description('Lean PostgreSQL Migrations')
-  .version(pkg.version)
+  .version(pkg.version, '-v, --version', 'output the current version')
+  .helpOption(' --help', 'get more information')
 
 program
   .addOption(new Option('-d, --dir <directory>', 'The directory containing your migration files').default('./migrations').env('LPGM_DIR'))
   .addOption(new Option('-t, --table <dbtable>', 'The name of the migrations table').default('migrations').env('LPGM_TABLE'))
   .addOption(new Option('-s, --schema <dbschema>', 'The name of the migrations table scheme').default('public').env('LPGM_SCHEMA'))
-  .addOption(new Option('-C, --connection <db-url>', 'DB connection string').env('DATABASE_URL'))
-  .addOption(new Option('-H, --host <host>', 'DB host').default('localhost').env('PGHOST'))
+  .addOption(new Option('-h, --host <host>', 'DB host').default('localhost').env('PGHOST'))
   .addOption(new Option('-p, --port <port>', 'DB port').default('5432').env('PGPORT'))
-  .addOption(new Option('-U, --user <user>', 'DB user').default('postgres').env('PGUSER'))
-  .addOption(new Option('-W, --password <pswd>', 'DB password').default('postgres').env('PGPASSWORD'))
+  .addOption(new Option('-u, --user <user>', 'DB user').default('postgres').env('PGUSER'))
   .addOption(new Option('-D, --db <dbname>', 'DB name').default('postgres').env('PGDATABASE'))
-  .addOption(new Option('    --silent', 'No output'))
-  .addOption(new Option('    --monitor', 'Attach pg-monitor and log actual SQL commands in console'))
-  .addOption(new Option('    --dry', 'Dry run'))
+  .addOption(new Option('-P, --password <pswd>', 'DB password').default('postgres').env('PGPASSWORD'))
+  .addOption(new Option('--silent', 'Output only fatal errors'))
+  .addOption(new Option('--dry', 'Dry run'))
 
 program.addHelpText('after', `
 Examples:

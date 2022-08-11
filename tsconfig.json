@@ -1,7 +1,8 @@
 {
   "compilerOptions": {
-    "target": "es2021",
-    "module": "commonjs",
+    "target": "ES2020",
+    "module": "ES2020",
+    "moduleResolution": "Node",
     "declaration": true,
     "allowJs": true,
     "checkJs": false,
@@ -14,10 +15,9 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noImplicitReturns": true,
-    "moduleResolution": "Node",
+    // "isolatedModules": true,
     "types": [
-      "node",
-      "jest"
+      "node"
     ]
   },
   "include": [

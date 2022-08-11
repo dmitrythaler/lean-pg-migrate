@@ -2,8 +2,7 @@
 
 Simple PostgreSQL migration tool.
 
-Simple Up/Down js migrations based on the pg-promise library.
-It is a spin-off from a larger project and was not originally intended to be published.
+Simple Up/Down js migrations based on [postrgres.js](https://github.com/porsager/postgres) library.
 
 WIP
 ## CLI
@@ -18,12 +17,11 @@ Options:
   -d, --dir <directory>                  The directory containing your migration files (default: "./migrations", env: LPGM_DIR)
   -t, --table <dbtable>                  The name of the migrations table (default: "migrations", env: LPGM_TABLE)
   -s, --schema <dbschema>                The name of the migrations table scheme (default: "public", env: LPGM_SCHEMA)
-  -C, --connection <db-url>              DB connection string (env: DATABASE_URL)
   -H, --host <host>                      DB host (default: "localhost", env: PGHOST)
   -p, --port <port>                      DB port (default: "5432", env: PGPORT)
   -U, --user <user>                      DB user (default: "postgres", env: PGUSER)
-  -W, --password <pswd>                  DB password (default: "postgres", env: PGPASSWORD)
   -D, --db <dbname>                      DB name (default: "postgres", env: PGDATABASE)
+      --password <pswd>                  DB password (default: "postgres", env: PGPASSWORD)
       --silent                           No output
       --monitor                          Attach pg-monitor and log actual SQL commands in console
       --dry                              Dry run
@@ -50,3 +48,6 @@ Examples:
 
 ## API
 tbd...
+
+## Caveats
+It is a spin-off from a larger project that was not originally intended to be published. Use with some skepticism.

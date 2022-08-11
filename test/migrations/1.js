@@ -1,4 +1,4 @@
-const up = async function (sql) {
+export const up = async function (sql) {
 
   try {
     // console.log('1.js UP!')
@@ -13,10 +13,8 @@ const up = async function (sql) {
 
 }
 
-const down = async function (sql) {
+export const down = async function (sql) {
   await sql`
     DROP TABLE migrations4test_1
     `
 }
-
-module.exports = { up, down }

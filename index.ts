@@ -15,10 +15,10 @@ export type SqlRecord = Record<string, T.SerializableParameter>
 export type TrSql = T.TransactionSql<Keyed>
 
 export type MigrationConfig = DBConnection & {
-  migrationsSchema: string
-  migrationsTable: string
-  migrationsDir: string
-  silent: boolean
+  migrationsSchema?: string
+  migrationsTable?: string
+  migrationsDir?: string
+  silent?: boolean
 }
 
 export type MigrationRecord = {
@@ -463,5 +463,4 @@ export const createMigrationFile = (name: string, dir = './migrations'): string 
     console.error(`Migration file "${fileName}" creation error: ${error.toString()}`)
     return ''
   }
-
 }

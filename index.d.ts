@@ -5,10 +5,10 @@ export declare type Sql = T.Sql<Keyed>;
 export declare type SqlRecord = Record<string, T.SerializableParameter>;
 export declare type TrSql = T.TransactionSql<Keyed>;
 export declare type MigrationConfig = DBConnection & {
-    migrationsSchema: string;
-    migrationsTable: string;
-    migrationsDir: string;
-    silent: boolean;
+    migrationsSchema?: string;
+    migrationsTable?: string;
+    migrationsDir?: string;
+    silent?: boolean;
 };
 export declare type MigrationRecord = {
     id?: number;

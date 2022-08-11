@@ -1,6 +1,6 @@
 {
   "name": "lean-pg-migrate",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "PostgreSQL simple migration tool",
   "type": "module",
   "author": "Dmitry Thaler <dmitry@thaler.dev>",
@@ -23,7 +23,7 @@
     "lpgm": "./lpgm.js"
   },
   "engines": {
-    "node": ">=16"
+    "node": ">=18"
   },
   "keywords": [
     "postgres",

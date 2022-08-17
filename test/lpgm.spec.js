@@ -34,7 +34,8 @@ test('Migration usage suite', { concurrency: false }, async t0 => {
     migrationsDir: 'test/migrations',
     migrationsSchema: 'public',
     migrationsTable: 'migrations4test',
-    silent: true
+    logger: console.log,
+    errorLogger: console.error
   }
 
   await t0.test('Prep', async t => {

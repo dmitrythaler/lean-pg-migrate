@@ -4,11 +4,13 @@ export declare type DBConnection = T.Options<Keyed>;
 export declare type Sql = T.Sql<Keyed>;
 export declare type SqlRecord = Record<string, T.SerializableParameter>;
 export declare type TrSql = T.TransactionSql<Keyed>;
+declare type FuncWithManyArgs = (...args: any[]) => void;
 export declare type MigrationConfig = DBConnection & {
     migrationsSchema?: string;
     migrationsTable?: string;
     migrationsDir?: string;
-    silent?: boolean;
+    logger?: FuncWithManyArgs | null | false;
+    errorLogger?: FuncWithManyArgs | null | false;
 };
 export declare type MigrationRecord = {
     id?: number;
@@ -26,7 +28,7 @@ export declare class Migration {
     private readonly sql;
     private readonly table;
     private log;
-    private error;
+    private errorLog;
     /**
      * @private @constructor
      */

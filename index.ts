@@ -21,7 +21,7 @@ export type MigrationConfig = DBConnection & {
   migrationsTable?: string
   migrationsDir?: string
   logger?: FuncWithManyArgs | null | false
-  errorLog?: FuncWithManyArgs | null | false
+  errorLogger?: FuncWithManyArgs | null | false
 }
 
 export type MigrationRecord = {
@@ -57,7 +57,7 @@ export class Migration {
     this.sql = sql
     this.table = sql(`${cfg.migrationsSchema}.${cfg.migrationsTable}`)
     this.log = cfg.logger ? cfg.logger : () => {}
-    this.errorLog = makeErrorLog(cfg.errorLog)
+    this.errorLog = makeErrorLog(cfg.errorLogger)
 
     // gen lock id based on hashed connection parameters
     const hash = crypto.createHash('SHAKE128', { outputLength: 7 })
@@ -121,7 +121,7 @@ export class Migration {
         )
         `
     } catch (er) {
-      makeErrorLog(config.errorLog)('Migration init error:', er.toString())
+      makeErrorLog(config.errorLogger)('Migration init error:', er.toString())
       throw er
     }
     return new Migration(config, sql)

@@ -3,6 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 import postgres from 'postgres';
 //  ---------------------------------
+const makeErrorLog = erlog => erlog ? erlog : (erlog === undefined ? console.error : () => { });
+//  ---------------------------------
 export class Migration {
     /**
      * @private @constructor
@@ -11,14 +13,8 @@ export class Migration {
         this.config = cfg;
         this.sql = sql;
         this.table = sql(`${cfg.migrationsSchema}.${cfg.migrationsTable}`);
-        if (cfg.silent) {
-            this.log = () => { };
-            this.error = () => { };
-        }
-        else {
-            this.log = console.log.bind(console);
-            this.error = console.error.bind(console);
-        }
+        this.log = cfg.logger ? cfg.logger : () => { };
+        this.errorLog = makeErrorLog(cfg.errorLogger);
         // gen lock id based on hashed connection parameters
         const hash = crypto.createHash('SHAKE128', { outputLength: 7 })
             .update(cfg.host + cfg.port + cfg.database + cfg.migrationsSchema + cfg.migrationsTable)
@@ -44,7 +40,6 @@ export class Migration {
             migrationsSchema: LPGM_SCHEMA || 'public',
             migrationsTable: LPGM_TABLE || 'migrations',
             migrationsDir: LPGM_DIR || './migrations',
-            silent: false,
             ...cfg
         };
         const sql = postgres({
@@ -68,7 +63,7 @@ export class Migration {
         `;
         }
         catch (er) {
-            console.error('Migration init error:', er.toString());
+            makeErrorLog(config.errorLogger)('Migration init error:', er.toString());
             throw er;
         }
         return new Migration(config, sql);
@@ -158,7 +153,7 @@ export class Migration {
                 .sort();
         }
         catch (er) {
-            this.error(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`);
+            this.errorLog(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`);
             throw er;
         }
         if (!files.length) {
@@ -201,7 +196,7 @@ export class Migration {
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';
-            this.error(`Migrations exec error: ${migFile}${er.toString()}`);
+            this.errorLog(`Migrations exec error: ${migFile}${er.toString()}`);
             throw er;
         }
         finally {
@@ -273,7 +268,7 @@ export class Migration {
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';
-            this.error(`Migrations rollback error: ${migFile}${er.toString()}`);
+            this.errorLog(`Migrations rollback error: ${migFile}${er.toString()}`);
             throw er;
         }
         finally {
@@ -302,7 +297,7 @@ export class Migration {
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';
-            this.error(`Migrations rollback error: ${migFile}${er.toString()}`);
+            this.errorLog(`Migrations rollback error: ${migFile}${er.toString()}`);
             throw er;
         }
         finally {
@@ -339,7 +334,7 @@ export class Migration {
         }
         catch (er) {
             const migFile = er.migration ? `(file: ${er.migration}) ` : '';
-            this.error(`Migrations rollback error: ${migFile}${er.toString()}`);
+            this.errorLog(`Migrations rollback error: ${migFile}${er.toString()}`);
             throw er;
         }
         finally {

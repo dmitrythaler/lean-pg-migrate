@@ -1,6 +1,6 @@
 {
   "name": "lean-pg-migrate",
-  "version": "0.9.0",
+  "version": "0.9.1",
   "description": "PostgreSQL simple migration tool",
   "type": "module",
   "author": "Dmitry Thaler <dmitry@thaler.dev>",

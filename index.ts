@@ -14,11 +14,14 @@ export type Sql = T.Sql<Keyed>
 export type SqlRecord = Record<string, T.SerializableParameter>
 export type TrSql = T.TransactionSql<Keyed>
 
+type FuncWithManyArgs = (...args: any[]) => void
+
 export type MigrationConfig = DBConnection & {
   migrationsSchema?: string
   migrationsTable?: string
   migrationsDir?: string
-  silent?: boolean
+  logger?: FuncWithManyArgs | null | false
+  errorLog?: FuncWithManyArgs | null | false
 }
 
 export type MigrationRecord = {
@@ -34,14 +37,17 @@ export type MigrationItself = {
 } & Keyed
 
 //  ---------------------------------
+const makeErrorLog = erlog => erlog ? erlog : (erlog === undefined ? console.error : () => {})
+
+//  ---------------------------------
 export class Migration {
   private readonly config: MigrationConfig
   private readonly lockId: number
   private readonly sql: Sql
   private readonly table: T.Helper<string>
 
-  private log: (...args: any[]) => void
-  private error: (...args: any[]) => void
+  private log: FuncWithManyArgs
+  private errorLog: FuncWithManyArgs
 
   /**
    * @private @constructor
@@ -50,14 +56,8 @@ export class Migration {
     this.config = cfg
     this.sql = sql
     this.table = sql(`${cfg.migrationsSchema}.${cfg.migrationsTable}`)
-
-    if (cfg.silent) {
-      this.log = () => {}
-      this.error = () => {}
-    } else {
-      this.log = console.log.bind(console)
-      this.error = console.error.bind(console)
-    }
+    this.log = cfg.logger ? cfg.logger : () => {}
+    this.errorLog = makeErrorLog(cfg.errorLog)
 
     // gen lock id based on hashed connection parameters
     const hash = crypto.createHash('SHAKE128', { outputLength: 7 })
@@ -96,7 +96,6 @@ export class Migration {
       migrationsSchema: LPGM_SCHEMA || 'public',
       migrationsTable: LPGM_TABLE || 'migrations',
       migrationsDir: LPGM_DIR || './migrations',
-      silent: false,
       ...cfg
     }
 
@@ -122,7 +121,7 @@ export class Migration {
         )
         `
     } catch (er) {
-      console.error('Migration init error:', er.toString())
+      makeErrorLog(config.errorLog)('Migration init error:', er.toString())
       throw er
     }
     return new Migration(config, sql)
@@ -222,7 +221,7 @@ export class Migration {
         .map(dr => dr.name)
         .sort()
     } catch (er) {
-      this.error(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`)
+      this.errorLog(`Error reading "${path.resolve(this.config.migrationsDir)}" directory!`)
       throw er
     }
 
@@ -268,7 +267,7 @@ export class Migration {
       return dry ? 0 : files.length
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
-      this.error(`Migrations exec error: ${migFile}${er.toString()}`)
+      this.errorLog(`Migrations exec error: ${migFile}${er.toString()}`)
       throw er
     } finally {
       await this.releaseLock()
@@ -342,7 +341,7 @@ export class Migration {
       return await this.execDown(rows, dry)
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
-      this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
+      this.errorLog(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
     } finally {
       await this.releaseLock()
@@ -371,7 +370,7 @@ export class Migration {
       return await this.execDown(rows, dry)
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
-      this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
+      this.errorLog(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
     } finally {
       await this.releaseLock()
@@ -411,7 +410,7 @@ export class Migration {
       return await this.execDown(rows, dry)
     } catch (er) {
       const migFile = er.migration ? `(file: ${er.migration}) ` : ''
-      this.error(`Migrations rollback error: ${migFile}${er.toString()}`)
+      this.errorLog(`Migrations rollback error: ${migFile}${er.toString()}`)
       throw er
     } finally {
       await this.releaseLock()
